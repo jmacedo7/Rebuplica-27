@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Build output
+dist/
+build/
+.next/
+out/
+.turbo/
+.vercel/
+
+# Coverage and tests
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+logs/
+
+# Local data
+*.sqlite
+*.sqlite3
+*.db
+data/
+tmp/
+temp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets/certificates
+*.pem
+*.key
+*.p12
+*.pfx
