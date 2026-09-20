@@ -1,3 +1,3 @@
 import assert from 'node:assert/strict';import { readFileSync } from 'node:fs';import { describe,it } from 'node:test';import { fileURLToPath } from 'node:url';
 const migration=readFileSync(fileURLToPath(new URL('../../db/migrations/0001_init.sql',import.meta.url)),'utf8');
-describe('PostgreSQL schema invariants',()=>{it('protects version uniqueness and foreign-key ownership',()=>{assert.match(migration,/UNIQUE \(game_id, version\)/);assert.match(migration,/REFERENCES users\(id\)/);assert.match(migration,/REFERENCES games\(id\)/);assert.match(migration,/token_hash text NOT NULL UNIQUE/);});});
+describe('PostgreSQL schema invariants',()=>{it('protects version uniqueness and foreign-key ownership',()=>{assert.match(migration,/UNIQUE\s*\(\s*game_id\s*,\s*version\s*\)/);assert.match(migration,/REFERENCES\s+users\s*\(id\)/);assert.match(migration,/REFERENCES\s+games\s*\(id\)/);assert.match(migration,/token_hash\s+text\s+NOT NULL\s+UNIQUE/);});});
