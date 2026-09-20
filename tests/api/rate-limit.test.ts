@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';import { describe,it } from 'node:test';import { RateLimiter } from '../../src/api/rate-limit.ts';
+describe('RateLimiter',()=>{it('limits and resets',()=>{const limiter=new RateLimiter(2,1000);assert.equal(limiter.allow('a',0),true);assert.equal(limiter.allow('a',1),true);assert.equal(limiter.allow('a',2),false);assert.equal(limiter.allow('a',1001),true);});});

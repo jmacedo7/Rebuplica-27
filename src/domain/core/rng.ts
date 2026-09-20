@@ -1,0 +1,3 @@
+export interface RandomSource{nextUint32():number;nextFloat():number;fork(label:string):RandomSource;}
+const hash=(input:string):number=>{let h=2166136261;for(let i=0;i<input.length;i+=1){h^=input.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;};
+export class DeterministicRng implements RandomSource{#state:number;constructor(seed:number){this.#state=(seed>>>0)||0x6d2b79f5;}nextUint32():number{let x=this.#state;x^=x<<13;x^=x>>>17;x^=x<<5;this.#state=x>>>0;return this.#state;}nextFloat():number{return this.nextUint32()/4294967296;}fork(label:string):RandomSource{return new DeterministicRng((this.#state^hash(label))>>>0);}}

@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';import { describe,it } from 'node:test';import { hashPassword,verifyPassword } from '../../src/security/password.ts';
+describe('password hashing',()=>{it('hashes and verifies',()=>{const hash=hashPassword('correct horse battery staple');assert.ok(!hash.includes('correct horse battery staple'));assert.equal(verifyPassword('correct horse battery staple',hash),true);assert.equal(verifyPassword('wrong password',hash),false);});});
