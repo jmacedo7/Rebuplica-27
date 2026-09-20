@@ -1,0 +1,7 @@
+# Normalize line endings: the repository stores LF, checkouts use the platform
+# default. Without this, a Windows checkout can introduce CRLF into source and
+# config files and produce diffs that touch entire files.
+* text=auto eol=lf
+
+# Lockfiles are generated: keep them out of diff noise and merge conflicts.
+package-lock.json -diff linguist-generated

@@ -7,40 +7,22 @@ O jogador começa como candidato à Presidência da República, desenvolve sua c
 > **O poder está nas suas mãos.**
 
 ## Status
-
 🚧 **Em desenvolvimento — fase de fundação do projeto.**
 
 O foco atual é construir uma base sólida: arquitetura, banco de dados, autenticação, partidas, estado do mundo, salvamentos, histórico de decisões, APIs, testes e segurança. A simulação avançada e a integração com modelos de IA serão desenvolvidas posteriormente.
 
-## Princípios
+## Desenvolvimento
+Requisitos: Node.js 22.18 ou superior e npm. O PostgreSQL é necessário para a persistência de produção; a fundação também possui repositórios em memória para testes.
 
-- Liberdade de escolha do jogador.
-- Consequências dinâmicas para decisões.
-- Sistemas modulares e extensíveis.
-- Estado do mundo persistente e versionado.
-- Histórico das ações importantes.
-- Segurança desde o início.
-- Arquitetura preparada para futuras integrações de IA.
+```bash
+npm install
+cp .env.example .env
+npm run verify
+npm run config:check
+npm run dev
+```
 
-## Fase atual
-
-1. Higiene e documentação do repositório.
-2. Arquitetura e decisões técnicas.
-3. Tooling, tipos e testes.
-4. Configuração segura de ambiente.
-5. Banco de dados e migrações.
-6. Autenticação e autorização.
-7. Partidas e salvamentos.
-8. Estado do mundo e histórico.
-9. APIs e contratos.
-10. Segurança e observabilidade.
+Veja `docs/03-ROADMAP.md` para o estado das fases e `docs/05-BACKEND.md` para a fundação técnica.
 
 ## Licença
-
 Este projeto é **proprietário**. Consulte `LICENSE` para os termos de uso.
-
-Copyright © 2026 João Victor Macedo Jeronimo. Todos os direitos reservados.
-
----
-
-**Rebuplica 27** — o poder está nas suas mãos.

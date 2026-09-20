@@ -1,0 +1,19 @@
+{
+  "name":"rebuplica-27",
+  "version":"0.1.0",
+  "private":true,
+  "description":"Rebuplica 27 - backend foundation for a political and government simulation game set in contemporary Brazil.",
+  "license":"UNLICENSED",
+  "type":"module",
+  "engines":{"node":">=22.18.0"},
+  "scripts":{
+    "typecheck":"tsc --noEmit",
+    "test":"node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "build":"tsc -p tsconfig.build.json",
+    "config:check":"node --experimental-strip-types --env-file-if-exists=.env scripts/check-config.ts",
+    "verify":"npm run typecheck && npm test && npm run build",
+    "start":"node dist/main.js",
+    "dev":"node --experimental-strip-types src/main.ts"
+  },
+  "devDependencies":{"@types/node":"^22.19.17","typescript":"^6.0.3"}
+}

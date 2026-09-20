@@ -11,30 +11,34 @@ node_modules/
 !.env.*.example
 
 # Build output
-dist/
-build/
-.next/
-out/
-.turbo/
-.vercel/
+/dist/
+/build/
+/out/
+/.next/
+/.turbo/
+/.vercel/
+*.tsbuildinfo
 
 # Coverage and tests
-coverage/
-.nyc_output/
-playwright-report/
-test-results/
+/coverage/
+/.nyc_output/
+/playwright-report/
+/test-results/
+
+# Linters and tool caches
+.eslintcache
 
 # Logs
 *.log
-logs/
+/logs/
 
 # Local data
 *.sqlite
 *.sqlite3
 *.db
-data/
-tmp/
-temp/
+/data/
+/tmp/
+/temp/
 
 # IDE
 .vscode/

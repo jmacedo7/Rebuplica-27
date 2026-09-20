@@ -1,0 +1,4 @@
+import { defaultDecisionRegistry } from './decisions.ts'; import { applyDecision,advanceTurn,createGame,type GameAggregate } from './game.ts'; import type { DecisionInput,UserId } from './types.ts';
+export type ReplayCommand={readonly kind:'decision';readonly actorId:UserId;readonly input:DecisionInput}|{readonly kind:'advanceTurn';readonly days?:number};
+export interface ReplayResult{readonly aggregate:GameAggregate;readonly deterministic:boolean;}
+export const replay=(ownerId:UserId,seed:number,commands:readonly ReplayCommand[],startDate?:string):ReplayResult=>{const registry=defaultDecisionRegistry();let aggregate=createGame(ownerId,'replay',seed,startDate);for(const command of commands)aggregate=command.kind==='decision'?applyDecision(aggregate,command.actorId,command.input,registry):advanceTurn(aggregate,command.days);return{aggregate,deterministic:true};};
