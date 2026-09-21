@@ -1,1 +1,15 @@
-export * from './config/index.ts';export * from './domain/core/index.ts';export * from './persistence/ports.ts';export * from './persistence/in-memory.ts';export * from './security/password.ts';export * from './security/jwt.ts';export * from './api/server.ts';
+export * from './config/index.ts';
+export * from './domain/core/index.ts';
+export * from './domain/shared/canonical.ts';
+export * from './domain/shared/result.ts';
+export * from './persistence/index.ts';
+export * from './security/index.ts';
+export * from './api/errors.ts';
+export * from './api/http.ts';
+export * from './api/logging.ts';
+export * from './api/rate-limit.ts';
+export * from './api/router.ts';
+export * from './api/validation.ts';
+export * from './api/auth-service.ts';
+export * from './api/game-service.ts';
+export * from './api/server.ts';
