@@ -12,22 +12,22 @@
 8. Observabilidade.
 9. Escala sem complexidade prematura.
 
-## Camadas previstas
+## Camadas implementadas
 
 ### Interface
-Responsável pela experiência do jogador.
+Não iniciada (fase 7). O backend já expõe o contrato documentado em `docs/07-API.md`.
 
-### API
-Responsável por autenticação, validação, autorização e comunicação com os sistemas do jogo.
+### API (`src/api`)
+Roteamento HTTP, autenticação, validação, autorização por proprietário, rate limit, logging estruturado, tratamento de erros e serviços de aplicação (`AuthService`, `GameService`).
 
-### Domínio
-Contém as regras centrais do jogo e deve evitar dependência direta de infraestrutura.
+### Domínio (`src/domain`)
+Regras centrais determinísticas: estado do mundo, decisões, turnos, eventos, snapshots, replay e validadores de schema. Não conhece HTTP, SQL nem o relógio do sistema.
 
-### Persistência
-Responsável por banco de dados, migrações e acesso aos dados.
+### Persistência (`src/persistence`)
+Portas (interfaces), adaptador PostgreSQL real, adaptador em memória apenas para testes e runner de migrations versionadas com checksum.
 
 ### Infraestrutura
-Responsável por serviços externos, filas, armazenamento, observabilidade e integrações.
+Limitada ao que existe hoje: pool PostgreSQL, logs JSON, probes `/health` e `/ready`, shutdown gracioso. Sem filas, cache distribuído ou serviços externos — por decisão explícita (ADR-0005/0006).
 
 ## Futuro: Simulation Engine
 

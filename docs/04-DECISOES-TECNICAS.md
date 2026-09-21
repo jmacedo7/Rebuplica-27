@@ -17,3 +17,10 @@ Implementadores devem explicar problema, impacto, solução proposta, riscos e t
 ## Registro
 
 Decisões arquiteturais relevantes devem ser registradas aqui ou em ADRs dedicadas.
+
+ADRs existentes:
+
+- `adr/0003-persistencia-e-concorrencia.md` — estado versionado e concorrência otimista.
+- `adr/0004-seguranca-autenticacao.md` — autenticação, hashing e tokens.
+- `adr/0005-runtime-postgresql-e-restauracao.md` — PostgreSQL como persistência real do runtime, migrations com checksum e semântica de restauração.
+- `adr/0006-rate-limit-e-determinismo.md` — rate limit em memória e determinismo verificável.

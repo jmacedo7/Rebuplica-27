@@ -12,7 +12,26 @@ jobs:
   verify:
     name: Typecheck, test and build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgres://rebuplica:rebuplica@127.0.0.1:5432/rebuplica_test
+      TEST_DATABASE_URL: postgres://rebuplica:rebuplica@127.0.0.1:5432/rebuplica_test
+      JWT_SECRET: ci-secret-that-is-long-enough-for-hs256-signing
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: rebuplica
+          POSTGRES_PASSWORD: rebuplica
+          POSTGRES_DB: rebuplica_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rebuplica -d rebuplica_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -22,12 +41,30 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
-          package-manager-cache: false
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+      - name: Validate configuration
+        run: npm run config:check
+      - name: Apply migrations
+        run: npm run migrate
+      - name: Verify migrations are idempotent
+        run: npm run migrate
       - name: Typecheck
         run: npm run typecheck
-      - name: Test
+      - name: Test (unit, API, security, PostgreSQL integration, concurrency, restart)
         run: npm test
       - name: Build
         run: npm run build
+      - name: Smoke test the compiled server
+        run: |
+          node dist/main.js &
+          server_pid=$!
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:3000/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:3000/health
+          curl --silent --fail http://127.0.0.1:3000/ready
+          kill -TERM "$server_pid"
+          wait "$server_pid"
