@@ -19,7 +19,7 @@ O escopo entregue hoje é a fundação de backend: autenticação, persistência
 | Migrations versionadas com checksum | ✅ |
 | API HTTP (auth, games, decisões, turnos, eventos, saves, restore, replay) | ✅ |
 | Segurança (scrypt, JWT HS256, ownership/IDOR, validação, rate limit, CORS, headers) | ✅ |
-| Testes (unit, domínio, API, segurança, integração PostgreSQL, concorrência, restart) | ✅ 248 testes |
+| Testes (unit, domínio, API, segurança, integração PostgreSQL, concorrência, restart) | ✅ 249 testes |
 | CI com PostgreSQL | ✅ |
 | Observabilidade (logs JSON, request id, /health, /ready) | ✅ |
 | Frontend | ⛔ fora do escopo desta etapa |
@@ -85,7 +85,7 @@ npm start              # executa o build (dist/main.js)
 npm run verify         # typecheck + testes + build
 ```
 
-Sem `DATABASE_URL`/`TEST_DATABASE_URL` a suíte roda 217 testes e marca como *skipped* apenas os de integração PostgreSQL (mensagem explícita no relatório). Com banco, roda 248 testes, incluindo concorrência real e reinício de processo.
+Sem `DATABASE_URL`/`TEST_DATABASE_URL` a suíte roda 218 testes e marca como *skipped* apenas os de integração PostgreSQL (mensagem explícita no relatório). Com banco, roda 249 testes, incluindo concorrência real e reinício de processo.
 
 Testes de integração precisam de um usuário com permissão de `CREATEDB` (cada arquivo cria um banco temporário descartável). No CI o serviço `postgres` é superusuário.
 

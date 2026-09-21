@@ -11,7 +11,7 @@
 - [x] Stack definitiva (Node 22 + TypeScript nativo + PostgreSQL)
 - [x] Estrutura de diretórios
 - [x] Tipagem estrita (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
-- [x] Testes (248 com PostgreSQL; 217 sem banco)
+- [x] Testes (249 com PostgreSQL; 218 sem banco)
 - [x] CI com serviço PostgreSQL, migrations e smoke test do build
 - [x] Validação de ambiente (`npm run config:check`, falha rápida)
 - [x] Lockfile (`package-lock.json`) e `npm ci`

@@ -91,7 +91,7 @@ Zero linhas ⇒ `OPTIMISTIC_CONFLICT` ⇒ HTTP 409. Nenhuma escrita sobrescreve 
 
 ```bash
 npm run typecheck
-npm test                  # 248 testes com PostgreSQL; 217 sem banco (integração é skipped)
+npm test                  # 249 testes com PostgreSQL; 218 sem banco (integração é skipped)
 npm run build
 ```
 

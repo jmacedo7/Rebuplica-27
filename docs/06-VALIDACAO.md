@@ -15,8 +15,8 @@ Registro do que foi realmente executado nesta etapa (2026-09-21), no ambiente de
 | `npm run migrate` | aplicou `0001_init`, `0002_updated_at_trigger`, `0003_integrity_and_indexes`; segunda execução: `alreadyApplied` (idempotente) |
 | `npm run migrate:status` | 3 migrations aplicadas, todos os checksums `ok` |
 | `npm run typecheck` | sem erros (TS estrito) |
-| `npm test` (com `TEST_DATABASE_URL`) | **248 testes, 40 suítes, 0 falhas** (15,6s) |
-| `npm test` (sem banco) | **217 testes, 0 falhas**, integrações PostgreSQL explicitamente *skipped* |
+| `npm test` (com `TEST_DATABASE_URL`) | **249 testes, 40 suítes, 0 falhas** (15,6s) |
+| `npm test` (sem banco) | **218 testes, 0 falhas**, integrações PostgreSQL explicitamente *skipped* |
 | `npm run build` | `dist/` gerado |
 | `node dist/main.js` | sobe, conecta no PostgreSQL, responde `/health`, `/ready` e `/auth/register`; `SIGTERM` encerra com código 0 e fecha o pool |
 
