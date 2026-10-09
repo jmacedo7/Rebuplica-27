@@ -41,8 +41,13 @@ export default function Dashboard() {
       }
       const { game } = await games.create(parsed);
       navigate(`/partida/${game.id}`);
-    } catch {
-      setError('Não foi possível criar a partida.');
+    } catch (failure) {
+      const messages = {
+        VALIDATION_ERROR: 'Semente rejeitada pelo servidor. Use um inteiro entre 0 e 4.294.967.295.',
+        RATE_LIMITED: 'Muitas ações seguidas. Aguarde um minuto.',
+        UNAUTHORIZED: 'Sua sessão expirou. Entre novamente.',
+      };
+      setError(messages[failure.code] || 'Não foi possível criar a partida.');
     } finally {
       setBusy(false);
     }
