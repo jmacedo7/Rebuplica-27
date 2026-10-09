@@ -1,6 +1,6 @@
-# Rebuplica 27
+# República 27
 
-**Rebuplica 27** é um jogo de simulação política e governamental ambientado no Brasil contemporâneo.
+**República 27** é um jogo de simulação política e governamental ambientado no Brasil contemporâneo.
 
 O jogador começa como candidato à Presidência da República, desenvolve sua campanha e propostas e pode ser eleito ou não. Caso eleito, passa a governar o Brasil, tomando decisões que afetam política, economia, sociedade, instituições, estados e relações internacionais.
 
@@ -58,7 +58,7 @@ Todas as variáveis são validadas na inicialização (`src/config/env.ts`) e es
 | `DATABASE_URL` | sim | — | `postgres://usuário:senha@host:porta/banco`. Não existe fallback em memória. |
 | `DATABASE_SSL` | não | `disable` | `disable`, `require` ou `no-verify` (provedores gerenciados normalmente exigem TLS). |
 | `JWT_SECRET` | em produção | aleatório em dev/test | Mínimo de 32 caracteres; placeholders e valores de baixa entropia são rejeitados em produção. |
-| `JWT_ISSUER` / `JWT_AUDIENCE` | não | `rebuplica-27` / `rebuplica-api` | Claims verificadas em todo token. |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | não | `republica-27` / `rebuplica-api` | Claims verificadas em todo token. |
 | `ACCESS_TOKEN_TTL_SECONDS` | não | `900` | Validade do access token (60–86400). |
 | `CORS_ALLOWED_ORIGINS` | não | vazio (somente mesma origem) | Origens exatas separadas por vírgula para frontend/API em origens diferentes. Curingas são rejeitados. |
 | `NODE_ENV` | não | `development` | `development`, `test` ou `production`. |
