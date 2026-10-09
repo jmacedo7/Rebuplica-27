@@ -18,7 +18,7 @@ export default function Shell({ children, breadcrumb }) {
       <header className="sticky top-0 z-40 border-b border-ink-600/70 bg-ink-900/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1180px] items-center gap-5 px-6 py-3.5">
           <Link to="/dashboard" className="group flex items-baseline gap-2" data-testid="brand-link">
-            <span className="font-display text-base tracking-tight text-bone">REBUPLICA</span>
+            <span className="font-display text-base tracking-tight text-bone">REPÚBLICA</span>
             <span className="font-mono text-xs text-amarelo transition-transform duration-200 group-hover:translate-x-0.5">
               27
             </span>
