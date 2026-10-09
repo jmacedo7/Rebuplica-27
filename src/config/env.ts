@@ -292,8 +292,8 @@ export function loadConfig(env: EnvSource): AppConfig {
   const geminiTimeoutMs = readInteger(env,'GEMINI_TIMEOUT_MS',DEFAULT_GEMINI_TIMEOUT_MS,MINIMUM_GEMINI_TIMEOUT_MS,MAXIMUM_GEMINI_TIMEOUT_MS,issues);
   const geminiDailyLimit = readInteger(env,'GEMINI_DAILY_LIMIT',DEFAULT_GEMINI_DAILY_LIMIT,1,MAXIMUM_GEMINI_DAILY_LIMIT,issues);
   const aiEncryptionSecret = readOptionalSecret(env,'AI_KEY_ENCRYPTION_SECRET',issues,MINIMUM_ENCRYPTION_SECRET_LENGTH);
-  const jwtIssuer = read(env,'JWT_ISSUER') ?? 'rebuplica-27';
-  const jwtAudience = read(env,'JWT_AUDIENCE') ?? 'rebuplica-api';
+  const jwtIssuer = read(env,'JWT_ISSUER') ?? 'republica-27';
+  const jwtAudience = read(env,'JWT_AUDIENCE') ?? 'republica-api';
 
   if (issues.length > 0 || databaseUrl === undefined || jwtSecret === undefined) throw new ConfigError(issues);
 
