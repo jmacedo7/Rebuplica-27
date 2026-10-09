@@ -1,4 +1,4 @@
-# Rebuplica 27 — Decisões Técnicas
+# República 27 — Decisões Técnicas
 
 ## Regra de decisão
 
