@@ -44,9 +44,17 @@ export interface CorsDecision {
  * - cross-origin requests must match an explicitly configured origin;
  * - credentialed requests are enabled only for those accepted origins (never wildcard).
  */
-export const resolveCors = (origin: string | undefined,allowedOrigins: readonly string[]): CorsDecision => {
+export const resolveCors = (
+  origin: string | undefined,
+  allowedOrigins: readonly string[],
+  requestOrigin?: string | undefined,
+): CorsDecision => {
   if (origin === undefined || origin === '') return {allowed:false,headers:{}};
-  if (!allowedOrigins.includes(origin)) return {allowed:false,headers:{vary:'Origin'}};
+  // Same-origin requests do not need a deployment-specific CORS allowlist.
+  // Cross-origin requests still require an exact match against configured origins.
+  if (origin !== requestOrigin && !allowedOrigins.includes(origin)) {
+    return {allowed:false,headers:{vary:'Origin'}};
+  }
   return {
     allowed:true,
     headers:{
