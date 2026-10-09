@@ -46,7 +46,7 @@ const withClient = async <T>(url: string,operation: (client: Client) => Promise<
   }
 };
 
-const TRUNCATE_TABLES = ['audit_log','refresh_tokens','game_events','game_saves','games','users'] as const;
+const TRUNCATE_TABLES = ['audit_log','refresh_tokens','user_sessions','game_events','game_saves','games','users'] as const;
 
 export const truncateAll = async (url: string): Promise<void> => {
   await withClient(url,async client => {

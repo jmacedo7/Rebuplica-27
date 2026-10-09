@@ -1,0 +1,62 @@
+import React from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AuthCallback from './pages/AuthCallback';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Match from './pages/Match';
+
+const Loading = () => (
+  <div className="grain min-h-screen flex items-center justify-center" data-testid="app-loading">
+    <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">carregando…</p>
+  </div>
+);
+
+function Protected({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (!user) return <Navigate to="/" replace />;
+  return children;
+}
+
+function Entry() {
+  const { user, loading } = useAuth();
+  if (loading) return <Loading />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Login />;
+}
+
+function AppRouter() {
+  const location = useLocation();
+  if (location.hash?.includes('session_id=')) return <AuthCallback />;
+  return (
+    <Routes>
+      <Route path="/" element={<Entry />} />
+      <Route
+        path="/dashboard"
+        element={
+          <Protected>
+            <Dashboard />
+          </Protected>
+        }
+      />
+      <Route
+        path="/partida/:id"
+        element={
+          <Protected>
+            <Match />
+          </Protected>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  );
+}

@@ -7,12 +7,39 @@ export interface UserRecord {
   readonly email: string;
   readonly passwordHash: string;
   readonly createdAt: string;
+  readonly displayName: string | null;
+  readonly pictureUrl: string | null;
 }
 
 export interface NewUserRecord {
   readonly id: UserId;
   readonly email: string;
   readonly passwordHash: string;
+  readonly displayName?: string | null | undefined;
+  readonly pictureUrl?: string | null | undefined;
+}
+
+export interface ProfilePatch {
+  readonly displayName?: string | null | undefined;
+  readonly pictureUrl?: string | null | undefined;
+}
+
+/** An opaque browser session (Emergent Google login). Only the hash is stored. */
+export interface SessionRecord {
+  readonly id: string;
+  readonly userId: UserId;
+  readonly tokenHash: string;
+  readonly provider: string;
+  readonly expiresAt: string;
+  readonly createdAt: string;
+}
+
+export interface NewSessionRecord {
+  readonly id: string;
+  readonly userId: UserId;
+  readonly tokenHash: string;
+  readonly provider: string;
+  readonly expiresAt: string;
 }
 
 export interface GameRecord {
@@ -67,6 +94,14 @@ export interface UserRepository {
   findByEmail(email: string): Promise<UserRecord | null>;
   findById(id: UserId): Promise<UserRecord | null>;
   create(record: NewUserRecord): Promise<UserRecord>;
+  updateProfile(id: UserId,patch: ProfilePatch): Promise<UserRecord>;
+}
+
+export interface SessionRepository {
+  create(record: NewSessionRecord): Promise<SessionRecord>;
+  /** Returns the session only while it is neither revoked nor expired. */
+  findActiveByHash(tokenHash: string): Promise<SessionRecord | null>;
+  revokeByHash(tokenHash: string): Promise<void>;
 }
 
 export interface GameRepository {
@@ -101,6 +136,7 @@ export interface AuditRepository {
 /** The repositories available to a single transaction/unit of work. */
 export interface Repositories {
   readonly users: UserRepository;
+  readonly sessions: SessionRepository;
   readonly games: GameRepository;
   readonly saves: SaveRepository;
   readonly events: EventRepository;

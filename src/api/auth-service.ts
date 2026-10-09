@@ -1,14 +1,24 @@
-import { randomUUID } from 'node:crypto';
+import { createHash,randomBytes,randomUUID } from 'node:crypto';
 import type { Persistence,UserRecord } from '../persistence/ports.ts';
 import { EmailConflictError } from '../persistence/errors.ts';
 import { InvalidTokenError,hashPasswordAsync,issueAccessToken,verifyAccessTokenWithOptions,verifyPasswordAsync } from '../security/index.ts';
 import { conflict,unauthorized } from './errors.ts';
+import { fetchEmergentProfile,type OAuthProfileFetcher } from './oauth.ts';
 import { validateEmail,validatePassword } from './validation.ts';
 
 export interface Principal {
   readonly id: string;
   readonly email: string;
   readonly createdAt: string;
+  readonly displayName: string | null;
+  readonly pictureUrl: string | null;
+}
+
+export interface SessionResult {
+  readonly sessionToken: string;
+  readonly expiresAt: string;
+  readonly maxAgeSeconds: number;
+  readonly principal: Principal;
 }
 
 export interface LoginResult {
@@ -23,9 +33,23 @@ export interface AuthServiceOptions {
   readonly jwtAudience: string;
   readonly accessTokenTtlSeconds: number;
   readonly clockSkewSeconds?: number | undefined;
+  /** Injectable so tests never call the real Emergent auth service. */
+  readonly oauthProfileFetcher?: OAuthProfileFetcher | undefined;
+  readonly sessionTtlSeconds?: number | undefined;
 }
 
-const toPrincipal = (user: UserRecord): Principal => ({id:user.id,email:user.email,createdAt:user.createdAt});
+const toPrincipal = (user: UserRecord): Principal => ({
+  id:user.id,
+  email:user.email,
+  createdAt:user.createdAt,
+  displayName:user.displayName,
+  pictureUrl:user.pictureUrl,
+});
+
+export const DEFAULT_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/** Sessions are looked up by hash: the raw cookie value never reaches the database. */
+const hashSessionToken = (token: string): string => createHash('sha256').update(token,'utf8').digest('hex');
 
 /** Verified once, lazily, to keep failed logins as slow as successful ones. */
 let dummyHashPromise: Promise<string> | null = null;
@@ -109,6 +133,67 @@ export class AuthService {
     const user = await this.#persistence.users.findById(subject);
     if (user === null) throw unauthorized();
     return toPrincipal(user);
+  }
+
+  /**
+   * Exchanges the one-shot Emergent `session_id` for a browser session.
+   * The account is created on first login and refreshed on every later login;
+   * password login stays impossible for these accounts (random unusable hash).
+   */
+  async exchangeOAuthSession(sessionId: string): Promise<SessionResult> {
+    const fetchProfile = this.#options.oauthProfileFetcher ?? fetchEmergentProfile;
+    const profile = await fetchProfile(sessionId);
+    const existing = await this.#persistence.users.findByEmail(profile.email);
+    const ttlSeconds = this.#options.sessionTtlSeconds ?? DEFAULT_SESSION_TTL_SECONDS;
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+    const unusablePasswordHash = existing === null
+      ? await hashPasswordAsync(`oauth-only-${randomBytes(32).toString('hex')}`)
+      : existing.passwordHash;
+
+    return this.#persistence.transaction(async repositories => {
+      const user = existing === null
+        ? await repositories.users.create({
+          id:randomUUID(),
+          email:profile.email,
+          passwordHash:unusablePasswordHash,
+          displayName:profile.name,
+          pictureUrl:profile.picture,
+        })
+        : await repositories.users.updateProfile(existing.id,{displayName:profile.name,pictureUrl:profile.picture});
+      await repositories.sessions.create({
+        id:randomUUID(),
+        userId:user.id,
+        tokenHash:hashSessionToken(profile.sessionToken),
+        provider:'emergent-google',
+        expiresAt,
+      });
+      await repositories.audit.record({
+        actorId:user.id,
+        action:existing === null ? 'auth.oauth_registered' : 'auth.oauth_login',
+        resourceType:'user',
+        resourceId:user.id,
+        metadata:{email:user.email,provider:'emergent-google'},
+      });
+      return {
+        sessionToken:profile.sessionToken,
+        expiresAt,
+        maxAgeSeconds:ttlSeconds,
+        principal:toPrincipal(user),
+      };
+    });
+  }
+
+  /** Resolves the caller from an opaque session token (cookie or bearer). */
+  async authenticateSession(sessionToken: string): Promise<Principal> {
+    const session = await this.#persistence.sessions.findActiveByHash(hashSessionToken(sessionToken));
+    if (session === null) throw unauthorized();
+    const user = await this.#persistence.users.findById(session.userId);
+    if (user === null) throw unauthorized();
+    return toPrincipal(user);
+  }
+
+  async revokeSession(sessionToken: string): Promise<void> {
+    await this.#persistence.sessions.revokeByHash(hashSessionToken(sessionToken));
   }
 
   #issue(userId: string): string {

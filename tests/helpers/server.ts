@@ -1,5 +1,6 @@
 import { createServer } from 'node:net';
 import { createApiServer,type ApiServer } from '../../src/api/server.ts';
+import type { OAuthProfile } from '../../src/api/oauth.ts';
 import { createSilentLogger } from '../../src/api/logging.ts';
 import { createInMemoryPersistence } from '../../src/persistence/in-memory.ts';
 import type { Persistence } from '../../src/persistence/ports.ts';
@@ -14,6 +15,8 @@ export interface TestServerOptions {
   readonly rateLimits?: RateLimitPolicy | undefined;
   readonly bodyLimitBytes?: number | undefined;
   readonly accessTokenTtlSeconds?: number | undefined;
+  readonly oauthProfileFetcher?: ((sessionId: string) => Promise<OAuthProfile>) | undefined;
+  readonly sessionTtlSeconds?: number | undefined;
 }
 
 export interface TestServer {
@@ -42,6 +45,8 @@ export const startTestServer = async (options: TestServerOptions = {}): Promise<
       jwtAudience:'rebuplica-api',
       accessTokenTtlSeconds:options.accessTokenTtlSeconds ?? 900,
       clockSkewSeconds:0,
+      oauthProfileFetcher:options.oauthProfileFetcher,
+      sessionTtlSeconds:options.sessionTtlSeconds,
     },
     corsAllowedOrigins:options.corsAllowedOrigins ?? [],
     trustedProxyHops:options.trustedProxyHops ?? 0,

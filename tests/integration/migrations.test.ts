@@ -21,8 +21,8 @@ const appliedVersions=async(url: string):Promise<readonly string[]>=>{
 describe('migration runner',()=>{
   it('discovers the repository migrations in order with stable checksums',()=>{
     const migrations=loadMigrations(MIGRATIONS_DIRECTORY);
-    assert.deepEqual(migrations.map(migration=>migration.version),['0001','0002','0003']);
-    assert.deepEqual(migrations.map(migration=>migration.name),['init','updated_at_trigger','integrity_and_indexes']);
+    assert.deepEqual(migrations.map(migration=>migration.version),['0001','0002','0003','0004']);
+    assert.deepEqual(migrations.map(migration=>migration.name),['init','updated_at_trigger','integrity_and_indexes','oauth_sessions']);
     for(const migration of migrations){
       assert.match(migration.checksum,/^[0-9a-f]{64}$/u);
       assert.ok(migration.sql.length>0);
@@ -63,7 +63,7 @@ describe('migration runner against PostgreSQL',{skip:hasDatabase ? false : datab
   it('is idempotent and reports the applied state',async()=>{
     const report=await applyMigrations({connectionString:url(),ssl:'disable'});
     assert.deepEqual([...report.applied],[]);
-    assert.deepEqual([...report.skipped],['0001','0002','0003']);
+    assert.deepEqual([...report.skipped],['0001','0002','0003','0004']);
     const status=await migrationStatus({connectionString:url(),ssl:'disable'});
     assert.ok(status.every(entry=>entry.applied&&entry.checksumMatches));
     assert.ok(status.every(entry=>entry.appliedAt!==null));

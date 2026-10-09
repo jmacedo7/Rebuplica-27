@@ -26,6 +26,10 @@ import type {
   Repositories,
   SaveRecord,
   SaveRepository,
+  NewSessionRecord,
+  ProfilePatch,
+  SessionRecord,
+  SessionRepository,
   UserRecord,
   UserRepository,
 } from './ports.ts';
@@ -127,11 +131,28 @@ interface Queryable {
 
 type Row = Record<string, unknown>;
 
+const nullableText = (value: unknown,field: string): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') throw new InvalidStoredDataError(`${field} is not a string`);
+  return value;
+};
+
 const mapUser = (row: Row): UserRecord => ({
   id: text(row['id'],'users.id'),
   email: text(row['email'],'users.email'),
   passwordHash: text(row['password_hash'],'users.password_hash'),
   createdAt: timestamp(row['created_at'],'users.created_at'),
+  displayName: nullableText(row['display_name'],'users.display_name'),
+  pictureUrl: nullableText(row['picture_url'],'users.picture_url'),
+});
+
+const mapSession = (row: Row): SessionRecord => ({
+  id: text(row['id'],'user_sessions.id'),
+  userId: text(row['user_id'],'user_sessions.user_id'),
+  tokenHash: text(row['token_hash'],'user_sessions.token_hash'),
+  provider: text(row['provider'],'user_sessions.provider'),
+  expiresAt: timestamp(row['expires_at'],'user_sessions.expires_at'),
+  createdAt: timestamp(row['created_at'],'user_sessions.created_at'),
 });
 
 const mapGame = (row: Row): GameRecord => ({
@@ -177,26 +198,34 @@ const serializeEvent = (event: DomainEvent): { id: string; type: string; version
   return {id:eventId,type,version,payload:JSON.parse(JSON.stringify(rest)) as Record<string, unknown>};
 };
 
+const USER_COLUMNS = 'id, email, password_hash, created_at, display_name, picture_url';
+
 class PostgresUserRepository implements UserRepository {
   readonly #db: Queryable;
   constructor(db: Queryable) {
     this.#db = db;
   }
   async findByEmail(email: string): Promise<UserRecord | null> {
-    const result = await this.#db.query('SELECT id, email, password_hash, created_at FROM users WHERE email = $1',[email]);
+    const result = await this.#db.query(`SELECT ${USER_COLUMNS} FROM users WHERE email = $1`,[email]);
     const row = result.rows[0];
     return row === undefined ? null : mapUser(row);
   }
   async findById(id: UserId): Promise<UserRecord | null> {
-    const result = await this.#db.query('SELECT id, email, password_hash, created_at FROM users WHERE id = $1',[requireUuid(id,'users.id')]);
+    const result = await this.#db.query(`SELECT ${USER_COLUMNS} FROM users WHERE id = $1`,[requireUuid(id,'users.id')]);
     const row = result.rows[0];
     return row === undefined ? null : mapUser(row);
   }
   async create(record: NewUserRecord): Promise<UserRecord> {
     try {
       const result = await this.#db.query(
-        'INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING id, email, password_hash, created_at',
-        [requireUuid(record.id,'users.id'),record.email,record.passwordHash],
+        `INSERT INTO users (id, email, password_hash, display_name, picture_url) VALUES ($1, $2, $3, $4, $5) RETURNING ${USER_COLUMNS}`,
+        [
+          requireUuid(record.id,'users.id'),
+          record.email,
+          record.passwordHash,
+          record.displayName ?? null,
+          record.pictureUrl ?? null,
+        ],
       );
       const row = result.rows[0];
       if (row === undefined) throw new InvalidStoredDataError('users insert returned no row');
@@ -204,6 +233,56 @@ class PostgresUserRepository implements UserRepository {
     } catch (error) {
       return translateWriteError(error);
     }
+  }
+  async updateProfile(id: UserId,patch: ProfilePatch): Promise<UserRecord> {
+    const result = await this.#db.query(
+      `UPDATE users SET display_name = COALESCE($2, display_name), picture_url = COALESCE($3, picture_url)
+       WHERE id = $1 RETURNING ${USER_COLUMNS}`,
+      [requireUuid(id,'users.id'),patch.displayName ?? null,patch.pictureUrl ?? null],
+    );
+    const row = result.rows[0];
+    if (row === undefined) throw new InvalidStoredDataError('users update returned no row');
+    return mapUser(row);
+  }
+}
+
+class PostgresSessionRepository implements SessionRepository {
+  readonly #db: Queryable;
+  constructor(db: Queryable) {
+    this.#db = db;
+  }
+  async create(record: NewSessionRecord): Promise<SessionRecord> {
+    try {
+      const result = await this.#db.query(
+        `INSERT INTO user_sessions (id, user_id, token_hash, provider, expires_at)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, user_id, token_hash, provider, expires_at, created_at`,
+        [
+          requireUuid(record.id,'user_sessions.id'),
+          requireUuid(record.userId,'user_sessions.user_id'),
+          record.tokenHash,
+          record.provider,
+          record.expiresAt,
+        ],
+      );
+      const row = result.rows[0];
+      if (row === undefined) throw new InvalidStoredDataError('user_sessions insert returned no row');
+      return mapSession(row);
+    } catch (error) {
+      return translateWriteError(error);
+    }
+  }
+  async findActiveByHash(tokenHash: string): Promise<SessionRecord | null> {
+    const result = await this.#db.query(
+      `SELECT id, user_id, token_hash, provider, expires_at, created_at FROM user_sessions
+       WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()`,
+      [tokenHash],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : mapSession(row);
+  }
+  async revokeByHash(tokenHash: string): Promise<void> {
+    await this.#db.query('UPDATE user_sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL',[tokenHash]);
   }
 }
 
@@ -454,6 +533,7 @@ export const createPostgresPersistence = (options: PostgresPersistenceOptions): 
   const root = queryAdapter(pool);
   const repositories: Repositories = {
     users: new PostgresUserRepository(root),
+    sessions: new PostgresSessionRepository(root),
     games: new PostgresGameRepository(root),
     saves: new PostgresSaveRepository(root),
     events: new PostgresEventRepository(root),
@@ -472,6 +552,7 @@ export const createPostgresPersistence = (options: PostgresPersistenceOptions): 
       const scoped = queryAdapter(client);
       const scopedRepositories: Repositories = {
         users: new PostgresUserRepository(scoped),
+        sessions: new PostgresSessionRepository(scoped),
         games: new PostgresGameRepository(scoped),
         saves: new PostgresSaveRepository(scoped),
         events: new PostgresEventRepository(scoped),

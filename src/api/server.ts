@@ -10,15 +10,18 @@ import {
   validationError,
 } from './errors.ts';
 import { GameService } from './game-service.ts';
+import type { OAuthProfileFetcher } from './oauth.ts';
 import {
   DEFAULT_MAXIMUM_BODY_BYTES,
   applySecurityHeaders,
   json,
   parseJson,
   readBearerToken,
+  readCookie,
   resolveClientAddress,
   resolveCors,
   resolveRequestId,
+  sessionCookie,
   type ResponseHeaders,
 } from './http.ts';
 import { createLogger,type Logger } from './logging.ts';
@@ -40,6 +43,7 @@ import type { LogLevel } from '../config/index.ts';
 import type { Persistence } from '../persistence/ports.ts';
 
 const SERVICE_NAME = 'rebuplica-27';
+const SESSION_COOKIE = 'session_token';
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10_000;
 const MAXIMUM_SEED = 4_294_967_295;
 
@@ -54,6 +58,8 @@ export interface ApiServerOptions {
     readonly jwtAudience: string;
     readonly accessTokenTtlSeconds: number;
     readonly clockSkewSeconds?: number | undefined;
+    readonly oauthProfileFetcher?: OAuthProfileFetcher | undefined;
+    readonly sessionTtlSeconds?: number | undefined;
   };
   readonly corsAllowedOrigins: readonly string[];
   readonly trustedProxyHops?: number | undefined;
@@ -88,6 +94,10 @@ interface RouteContext {
   readonly games: GameService;
   readonly persistence: Persistence;
   readonly uptimeSeconds: number;
+  /** Opaque browser session token presented by the caller (cookie or bearer). */
+  readonly sessionToken: string | null;
+  /** One-shot OAuth `session_id` sent as `X-Session-ID`. */
+  readonly sessionIdHeader: string | null;
   readBody(): Promise<Record<string,unknown>>;
 }
 
@@ -159,6 +169,37 @@ const routes: readonly RouteDefinition[] = [
       return {
         status:200,
         body:{accessToken:result.accessToken,tokenType:'Bearer',expiresIn:result.expiresIn,user:result.principal},
+      };
+    },
+  },
+  {
+    method:'POST',
+    pattern:'/auth/session',
+    auth:false,
+    handler: async context => {
+      const body = await context.readBody();
+      rejectUnknownKeys(body,['session_id','sessionId']);
+      const fromBody = body['session_id'] ?? body['sessionId'];
+      const sessionId = typeof fromBody === 'string' && fromBody.trim() !== '' ? fromBody.trim() : context.sessionIdHeader;
+      if (sessionId === null) throw validationError('session_id is required');
+      const result = await context.auth.exchangeOAuthSession(sessionId);
+      return {
+        status:200,
+        body:{user:result.principal,expiresAt:result.expiresAt},
+        headers:{'set-cookie':sessionCookie(SESSION_COOKIE,result.sessionToken,result.maxAgeSeconds)},
+      };
+    },
+  },
+  {
+    method:'POST',
+    pattern:'/auth/logout',
+    auth:false,
+    handler: async context => {
+      if (context.sessionToken !== null) await context.auth.revokeSession(context.sessionToken);
+      return {
+        status:200,
+        body:{ok:true},
+        headers:{'set-cookie':sessionCookie(SESSION_COOKIE,'',0)},
       };
     },
   },
@@ -301,6 +342,8 @@ const router = new Router(routes.map(route => ({method:route.method,pattern:rout
 
 const rateScopeFor = (method: string,pathname: string): RateLimitScope | null => {
   if (pathname === '/health' || pathname === '/ready') return null;
+  // Session introspection is a read: the page does it on every load.
+  if (pathname === '/auth/me') return 'read';
   if (pathname.startsWith('/auth/')) return 'auth';
   return method === 'GET' ? 'read' : 'write';
 };
@@ -316,6 +359,8 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
     jwtAudience:options.auth.jwtAudience,
     accessTokenTtlSeconds:options.auth.accessTokenTtlSeconds,
     clockSkewSeconds:options.auth.clockSkewSeconds,
+    oauthProfileFetcher:options.auth.oauthProfileFetcher,
+    sessionTtlSeconds:options.auth.sessionTtlSeconds,
   });
   const games = new GameService(options.persistence);
   const limiters = createRateLimiterSet(options.rateLimits ?? DEFAULT_RATE_LIMITS);
@@ -363,6 +408,10 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
         throw new ApiError(400,'VALIDATION_ERROR','Malformed request URL');
       }
       pathname = url.pathname;
+      // Strip the /api prefix added by the ingress proxy so internal route
+      // patterns stay stable (health/auth/games/etc. mounted at root).
+      if (pathname.startsWith('/api/')) pathname = pathname.slice(4);
+      else if (pathname === '/api') pathname = '/';
 
       if (method === 'OPTIONS') {
         if (!cors.allowed) throw forbidden('Origin not allowed');
@@ -400,10 +449,24 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
       if (route === undefined) throw notFound();
 
       let principal: Principal | null = null;
+      const cookieSession = readCookie(request,SESSION_COOKIE);
+      const bearer = readBearerToken(request);
+      const sessionIdHeader = typeof request.headers['x-session-id'] === 'string'
+        ? request.headers['x-session-id'].trim()
+        : null;
       if (route.auth) {
-        const token = readBearerToken(request);
-        if (token === null) throw unauthorized();
-        principal = await auth.authenticate(token);
+        if (cookieSession !== null) {
+          principal = await auth.authenticateSession(cookieSession);
+        } else if (bearer !== null) {
+          // A bearer can be either a JWT access token or an opaque session token.
+          try {
+            principal = await auth.authenticate(bearer);
+          } catch {
+            principal = await auth.authenticateSession(bearer);
+          }
+        } else {
+          throw unauthorized();
+        }
         principalId = principal.id;
       }
 
@@ -417,6 +480,8 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
         games,
         persistence:options.persistence,
         uptimeSeconds:Math.round((Date.now() - startedAtMs) / 1000),
+        sessionToken:cookieSession ?? bearer,
+        sessionIdHeader:sessionIdHeader === '' ? null : sessionIdHeader,
         readBody: () => parseJson(request,{maxBytes:bodyLimitBytes}),
       };
       const result = await route.handler(context);

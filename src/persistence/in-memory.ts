@@ -22,13 +22,17 @@ import type {
   EventRepository,
   GameRecord,
   GameRepository,
+  NewSessionRecord,
   NewUserRecord,
   Page,
   PageRequest,
   Persistence,
+  ProfilePatch,
   Repositories,
   SaveRecord,
   SaveRepository,
+  SessionRecord,
+  SessionRepository,
   UserRecord,
   UserRepository,
 } from './ports.ts';
@@ -54,9 +58,48 @@ class InMemoryUserRepository implements UserRepository {
       if (existing.email === record.email) throw new EmailConflictError();
     }
     if (this.records.has(record.id)) throw new EmailConflictError('USER_ID_CONFLICT');
-    const stored: UserRecord = {...clone(record),createdAt:nowIso()};
+    const stored: UserRecord = {
+      id:record.id,
+      email:record.email,
+      passwordHash:record.passwordHash,
+      createdAt:nowIso(),
+      displayName:record.displayName ?? null,
+      pictureUrl:record.pictureUrl ?? null,
+    };
     this.records.set(stored.id,stored);
     return clone(stored);
+  }
+  async updateProfile(id: UserId,patch: ProfilePatch): Promise<UserRecord> {
+    const current = this.records.get(id);
+    if (current === undefined) throw new EmailConflictError('USER_NOT_FOUND');
+    const updated: UserRecord = {
+      ...current,
+      displayName:patch.displayName ?? current.displayName,
+      pictureUrl:patch.pictureUrl ?? current.pictureUrl,
+    };
+    this.records.set(id,updated);
+    return clone(updated);
+  }
+}
+
+class InMemorySessionRepository implements SessionRepository {
+  readonly records = new Map<string,SessionRecord & {revoked: boolean}>();
+  async create(record: NewSessionRecord): Promise<SessionRecord> {
+    const stored = {...clone(record),createdAt:nowIso(),revoked:false};
+    this.records.set(record.tokenHash,stored);
+    const {revoked,...session} = stored;
+    return clone(session);
+  }
+  async findActiveByHash(tokenHash: string): Promise<SessionRecord | null> {
+    const stored = this.records.get(tokenHash);
+    if (stored === undefined || stored.revoked) return null;
+    if (new Date(stored.expiresAt).getTime() <= Date.now()) return null;
+    const {revoked,...session} = stored;
+    return clone(session);
+  }
+  async revokeByHash(tokenHash: string): Promise<void> {
+    const stored = this.records.get(tokenHash);
+    if (stored !== undefined) this.records.set(tokenHash,{...stored,revoked:true});
   }
 }
 
@@ -165,6 +208,7 @@ class Mutex {
 
 export interface InMemoryPersistence extends Persistence {
   readonly users: InMemoryUserRepository;
+  readonly sessions: InMemorySessionRepository;
   readonly games: InMemoryGameRepository;
   readonly saves: InMemorySaveRepository;
   readonly events: InMemoryEventRepository;
@@ -173,14 +217,16 @@ export interface InMemoryPersistence extends Persistence {
 
 export const createInMemoryPersistence = (): InMemoryPersistence => {
   const users = new InMemoryUserRepository();
+  const sessions = new InMemorySessionRepository();
   const games = new InMemoryGameRepository();
   const saves = new InMemorySaveRepository();
   const events = new InMemoryEventRepository();
   const audit = new InMemoryAuditRepository();
-  const repositories: Repositories = {users,games,saves,events,audit};
+  const repositories: Repositories = {users,sessions,games,saves,events,audit};
   const mutex = new Mutex();
   return {
     users,
+    sessions,
     games,
     saves,
     events,
@@ -194,6 +240,7 @@ export const createInMemoryPersistence = (): InMemoryPersistence => {
 // Kept for backwards compatibility with the original foundation module.
 export class InMemoryRepositories {
   readonly users = new InMemoryUserRepository();
+  readonly sessions = new InMemorySessionRepository();
   readonly games = new InMemoryGameRepository();
   readonly saves = new InMemorySaveRepository();
   readonly events = new InMemoryEventRepository();

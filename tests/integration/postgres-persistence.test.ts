@@ -60,11 +60,11 @@ describe('PostgreSQL persistence',{skip:hasDatabase ? false : databaseSkipReason
 
   it('applies the migrations when provisioning and reports them idempotently',async()=>{
     const { url }=context();
-    assert.deepEqual([...database?.migrations.applied ?? []],['0001','0002','0003']);
+    assert.deepEqual([...database?.migrations.applied ?? []],['0001','0002','0003','0004']);
     const { applyMigrations }=await import('../../src/persistence/migrations.ts');
     const second=await applyMigrations({connectionString:url,ssl:'disable'});
     assert.deepEqual([...second.applied],[]);
-    assert.deepEqual([...second.skipped],['0001','0002','0003']);
+    assert.deepEqual([...second.skipped],['0001','0002','0003','0004']);
   });
 
   it('persists users with a database generated timestamp',async()=>{

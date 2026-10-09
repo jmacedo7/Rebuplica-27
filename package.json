@@ -11,6 +11,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "test:all": "node --experimental-strip-types --env-file-if-exists=.env --test \"tests/**/*.test.ts\"",
     "build": "tsc -p tsconfig.build.json",
     "config:check": "node --experimental-strip-types --env-file-if-exists=.env scripts/check-config.ts",
     "migrate": "node --experimental-strip-types --env-file-if-exists=.env scripts/migrate.ts up",

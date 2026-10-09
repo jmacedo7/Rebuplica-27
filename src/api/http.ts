@@ -149,3 +149,28 @@ export const readBearerToken = (request: IncomingMessage): string | null => {
   if (scheme.toLowerCase() !== 'bearer' || value.trim() === '') return null;
   return value.trim();
 };
+
+/** Reads a single cookie value from the request `Cookie` header. */
+export const readCookie = (request: IncomingMessage,name: string): string | null => {
+  const header = request.headers.cookie;
+  if (header === undefined) return null;
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator === -1) continue;
+    if (part.slice(0,separator).trim() !== name) continue;
+    const value = part.slice(separator + 1).trim();
+    return value === '' ? null : decodeURIComponent(value);
+  }
+  return null;
+};
+
+/** Serialises an httpOnly session cookie; `maxAgeSeconds` of 0 clears it. */
+export const sessionCookie = (name: string,value: string,maxAgeSeconds: number): string =>
+  [
+    `${name}=${encodeURIComponent(value)}`,
+    'Path=/',
+    'HttpOnly',
+    'Secure',
+    'SameSite=Lax',
+    `Max-Age=${maxAgeSeconds}`,
+  ].join('; ');
