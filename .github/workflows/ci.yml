@@ -20,7 +20,9 @@ jobs:
       NODE_ENV: test
     services:
       postgres:
-        image: postgres:18-alpine
+        # Use the Amazon ECR Public mirror of the official image to avoid
+        # Docker Hub's unauthenticated pull-rate limit on GitHub-hosted runners.
+        image: public.ecr.aws/docker/library/postgres:18-alpine
         env:
           POSTGRES_USER: rebuplica
           POSTGRES_PASSWORD: rebuplica
