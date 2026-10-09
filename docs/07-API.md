@@ -171,7 +171,7 @@ Restaura o snapshot de forma transacional. Semântica explícita:
 
 ### CORS
 
-Rotas de escrita a partir de um navegador exigem origem listada em `CORS_ALLOWED_ORIGINS`; origens não listadas recebem `403`. O preflight `OPTIONS` responde `204` com `Access-Control-Allow-Origin` apenas para origens configuradas (`Vary: Origin`). Requisições sem header `Origin` (CLI, servidor-a-servidor, testes) seguem as regras normais de token.
+Requisições de mesma origem são aceitas automaticamente, inclusive quando `CORS_ALLOWED_ORIGINS` está vazio. Quando o frontend e a API estão em origens diferentes, a origem exata do frontend deve constar em `CORS_ALLOWED_ORIGINS`; origens não listadas recebem `403`. O preflight `OPTIONS` responde `204` e, para origens aceitas, retorna `Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials: true` e `Vary: Origin`. Cookies OAuth são `HttpOnly`, `Secure` e `SameSite=None`, para que possam acompanhar chamadas autenticadas entre origens; o allowlist continua obrigatório para origens diferentes. Requisições sem header `Origin` (CLI, servidor-a-servidor, testes) seguem as regras normais de token.
 
 ### Headers de resposta
 
