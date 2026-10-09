@@ -1,9 +1,9 @@
 // A blank REACT_APP_BACKEND_URL means the frontend and API share the preview origin.
 // Normalize a configured base so both `https://api.example.com` and
 // `https://api.example.com/api` work without producing a doubled /api/api path.
-const configuredBackendUrl = (process.env.REACT_APP_BACKEND_URL || '').trim().replace(/\\/+$/, '');
+const configuredBackendUrl = (process.env.REACT_APP_BACKEND_URL || '').trim().replace(/\/+$/, '');
 const BASE = configuredBackendUrl
-  ? `${configuredBackendUrl.replace(/\\/api$/i, '')}/api`
+  ? `${configuredBackendUrl.replace(/\/api$/i, '')}/api`
   : '/api';
 
 const TOKEN_KEY = 'rebuplica27.accessToken';
