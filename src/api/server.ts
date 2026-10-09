@@ -10,7 +10,6 @@ import {
   validationError,
 } from './errors.ts';
 import { GameService } from './game-service.ts';
-import type { OAuthProfileFetcher } from './oauth.ts';
 import {
   DEFAULT_MAXIMUM_BODY_BYTES,
   applySecurityHeaders,
@@ -31,16 +30,19 @@ import {
   type RateLimitPolicy,
   type RateLimitScope,
 } from './rate-limit.ts';
+import { GeminiService } from '../ai/gemini.ts';
 import { Router } from './router.ts';
 import {
   parseAfterVersion,
   parsePagination,
   rejectUnknownKeys,
+  requireString,
   requireUuid,
   validateDecisionInput,
 } from './validation.ts';
-import type { LogLevel } from '../config/index.ts';
+import type { LogLevel,Secret } from '../config/index.ts';
 import type { Persistence } from '../persistence/ports.ts';
+import type { GeminiFetcher } from '../ai/gemini.ts';
 
 const SERVICE_NAME = 'rebuplica-27';
 const SESSION_COOKIE = 'session_token';
@@ -58,8 +60,15 @@ export interface ApiServerOptions {
     readonly jwtAudience: string;
     readonly accessTokenTtlSeconds: number;
     readonly clockSkewSeconds?: number | undefined;
-    readonly oauthProfileFetcher?: OAuthProfileFetcher | undefined;
     readonly sessionTtlSeconds?: number | undefined;
+  };
+  readonly ai: {
+    /** Absent key = integration pending configuration (endpoint answers AI_NOT_CONFIGURED). */
+    readonly apiKey?: Secret<string> | undefined;
+    readonly model: string;
+    readonly timeoutMs: number;
+    /** Injectable so tests never call the real provider. */
+    readonly fetcher?: GeminiFetcher | undefined;
   };
   readonly corsAllowedOrigins: readonly string[];
   readonly trustedProxyHops?: number | undefined;
@@ -73,6 +82,7 @@ export interface ApiServer {
   readonly logger: Logger;
   readonly auth: AuthService;
   readonly games: GameService;
+  readonly ai: GeminiService;
   listen(): Promise<{host: string; port: number}>;
   /** Stops accepting connections, drains in-flight requests and hard-closes after the timeout. */
   close(options?: {readonly timeoutMs?: number | undefined}): Promise<void>;
@@ -92,12 +102,11 @@ interface RouteContext {
   readonly principal: Principal | null;
   readonly auth: AuthService;
   readonly games: GameService;
+  readonly ai: GeminiService;
   readonly persistence: Persistence;
   readonly uptimeSeconds: number;
   /** Opaque browser session token presented by the caller (cookie or bearer). */
   readonly sessionToken: string | null;
-  /** One-shot OAuth `session_id` sent as `X-Session-ID`. */
-  readonly sessionIdHeader: string | null;
   readBody(): Promise<Record<string,unknown>>;
 }
 
@@ -145,12 +154,16 @@ const routes: readonly RouteDefinition[] = [
     auth:false,
     handler: async context => {
       const body = await context.readBody();
-      rejectUnknownKeys(body,['email','password']);
+      rejectUnknownKeys(body,['email','password','displayName']);
       const email = body['email'];
       const password = body['password'];
       if (typeof email !== 'string') throw validationError('email is required');
       if (typeof password !== 'string') throw validationError('password is required');
-      const user = await context.auth.register(email,password);
+      const displayName = body['displayName'];
+      if (displayName !== undefined && displayName !== null && typeof displayName !== 'string') {
+        throw validationError('displayName must be a string');
+      }
+      const user = await context.auth.register(email,password,typeof displayName === 'string' ? displayName : undefined);
       return {status:201,body:{user}};
     },
   },
@@ -168,24 +181,7 @@ const routes: readonly RouteDefinition[] = [
       const result = await context.auth.login(email,password);
       return {
         status:200,
-        body:{accessToken:result.accessToken,tokenType:'Bearer',expiresIn:result.expiresIn,user:result.principal},
-      };
-    },
-  },
-  {
-    method:'POST',
-    pattern:'/auth/session',
-    auth:false,
-    handler: async context => {
-      const body = await context.readBody();
-      rejectUnknownKeys(body,['session_id','sessionId']);
-      const fromBody = body['session_id'] ?? body['sessionId'];
-      const sessionId = typeof fromBody === 'string' && fromBody.trim() !== '' ? fromBody.trim() : context.sessionIdHeader;
-      if (sessionId === null) throw validationError('session_id is required');
-      const result = await context.auth.exchangeOAuthSession(sessionId);
-      return {
-        status:200,
-        body:{user:result.principal,expiresAt:result.expiresAt},
+        body:{accessToken:result.accessToken,tokenType:'Bearer',expiresIn:result.expiresIn,expiresAt:result.expiresAt,user:result.principal},
         headers:{'set-cookie':sessionCookie(SESSION_COOKIE,result.sessionToken,result.maxAgeSeconds)},
       };
     },
@@ -300,6 +296,19 @@ const routes: readonly RouteDefinition[] = [
   },
   {
     method:'POST',
+    pattern:'/ai/ping',
+    auth:true,
+    handler: async context => {
+      requirePrincipal(context);
+      const body = await context.readBody();
+      rejectUnknownKeys(body,['prompt']);
+      const prompt = requireString(body,'prompt',{minLength:3,maxLength:1_000});
+      const result = await context.ai.generate(prompt);
+      return {status:200,body:{reply:result.text,model:result.model}};
+    },
+  },
+  {
+    method:'POST',
     pattern:'/games/:gameId/saves',
     auth:true,
     handler: async context => {
@@ -344,6 +353,7 @@ const rateScopeFor = (method: string,pathname: string): RateLimitScope | null =>
   if (pathname === '/health' || pathname === '/ready') return null;
   // Session introspection is a read: the page does it on every load.
   if (pathname === '/auth/me') return 'read';
+  if (pathname === '/ai/ping') return 'ai';
   if (pathname.startsWith('/auth/')) return 'auth';
   return method === 'GET' ? 'read' : 'write';
 };
@@ -378,10 +388,15 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
     jwtAudience:options.auth.jwtAudience,
     accessTokenTtlSeconds:options.auth.accessTokenTtlSeconds,
     clockSkewSeconds:options.auth.clockSkewSeconds,
-    oauthProfileFetcher:options.auth.oauthProfileFetcher,
     sessionTtlSeconds:options.auth.sessionTtlSeconds,
   });
   const games = new GameService(options.persistence);
+  const ai = new GeminiService({
+    apiKey:options.ai.apiKey,
+    model:options.ai.model,
+    timeoutMs:options.ai.timeoutMs,
+    fetcher:options.ai.fetcher,
+  });
   const limiters = createRateLimiterSet(options.rateLimits ?? DEFAULT_RATE_LIMITS);
   const allowedOrigins = options.corsAllowedOrigins;
   const bodyLimitBytes = options.bodyLimitBytes ?? DEFAULT_MAXIMUM_BODY_BYTES;
@@ -474,9 +489,6 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
       let principal: Principal | null = null;
       const cookieSession = readCookie(request,SESSION_COOKIE);
       const bearer = readBearerToken(request);
-      const sessionIdHeader = typeof request.headers['x-session-id'] === 'string'
-        ? request.headers['x-session-id'].trim()
-        : null;
       if (route.auth) {
         if (cookieSession !== null) {
           principal = await auth.authenticateSession(cookieSession);
@@ -501,10 +513,10 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
         principal,
         auth,
         games,
+        ai,
         persistence:options.persistence,
         uptimeSeconds:Math.round((Date.now() - startedAtMs) / 1000),
         sessionToken:cookieSession ?? bearer,
-        sessionIdHeader:sessionIdHeader === '' ? null : sessionIdHeader,
         readBody: () => parseJson(request,{maxBytes:bodyLimitBytes}),
       };
       const result = await route.handler(context);
@@ -558,6 +570,7 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
     logger,
     auth,
     games,
+    ai,
     listen: () => new Promise((resolve,reject) => {
       server.once('error',reject);
       server.listen(options.port,options.host,() => {

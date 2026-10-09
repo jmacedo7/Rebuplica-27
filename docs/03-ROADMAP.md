@@ -69,7 +69,8 @@ Hoje existem dois tipos de decisão (`SET_ECONOMIC_INDICATOR`, `SET_FLAG`) apena
 
 ## Fase 7 — Frontend (protótipo inicial implementado)
 - [x] Interface base em português, tema escuro, componentes e animações
-- [x] Login/cadastro por e-mail e callback de sessão Google (validar no preview após deploy)
+- [x] Login/cadastro por e-mail com sessão em cookie HttpOnly (Google/Emergent removidos)
+- [x] Camada de integração com o Gemini (endpoint autenticado `/ai/ping`; requer `GEMINI_API_KEY`)
 - [x] Dashboard para criar partidas por semente e consultar histórico
 - [x] Console de partida com indicadores genéricos, decisões de teste, avanço de turno, saves, timeline e selo de replay
 - [ ] Fluxo de campanha completo

@@ -29,6 +29,13 @@ export default function Shell({ children, breadcrumb }) {
             </span>
           )}
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              to="/painel-ia"
+              className="hidden font-mono text-[11px] uppercase tracking-[0.16em] text-muted transition-colors duration-200 hover:text-bone sm:block"
+              data-testid="ai-check-link"
+            >
+              Teste de IA
+            </Link>
             {user && (
               <span className="hidden font-mono text-[11px] text-muted sm:block" data-testid="session-email">
                 {user.displayName || user.email}

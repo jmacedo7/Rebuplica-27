@@ -1,4 +1,5 @@
 import { DecisionValidationError } from '../domain/core/decisions.ts';
+import { GeminiError } from '../ai/gemini.ts';
 import { SchemaError } from '../domain/core/schema.ts';
 import { isPersistenceError } from '../persistence/errors.ts';
 import { InvalidTokenError,WeakPasswordError } from '../security/index.ts';
@@ -52,6 +53,8 @@ const mapped = (status: number,code: string,message: string,details?: readonly u
  */
 export const mapError = (error: unknown): MappedError => {
   if (error instanceof ApiError) return mapped(error.status,error.code,error.message,error.details);
+  // Provider failures carry their own client-safe code; the API key never appears here.
+  if (error instanceof GeminiError) return mapped(error.status,error.code,error.message,undefined);
   if (error instanceof SchemaError) return mapped(400,'VALIDATION_ERROR',error.message,undefined);
   if (error instanceof DecisionValidationError) return mapped(400,'INVALID_DECISION',error.message,undefined);
   // Malformed percent-encoding in the path or query string is a client mistake.

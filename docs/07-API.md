@@ -63,9 +63,9 @@ Nenhuma das duas rotas é limitada por rate limit nem exige autenticação.
 
 ### `POST /auth/register`
 ```json
-{ "email": "player@example.com", "password": "a-very-strong-password" }
+{ "email": "player@example.com", "password": "a-very-strong-password", "displayName": "Candidata Teste" }
 ```
-Senha: no mínimo 12 e no máximo 200 caracteres (scrypt, N=32768, r=8, p=1, salt aleatório por senha). E-mail é normalizado para minúsculas.
+Senha: no mínimo 12 e no máximo 200 caracteres (scrypt, N=32768, r=8, p=1, salt aleatório por senha). E-mail é normalizado para minúsculas. `displayName` é opcional (1–80 caracteres).
 
 `201 {"user":{"id":"uuid","email":"player@example.com","createdAt":"2026-…Z"}}` · `409 EMAIL_ALREADY_EXISTS` · `400 WEAK_PASSWORD` · `400 INVALID_EMAIL`
 
@@ -73,10 +73,23 @@ Senha: no mínimo 12 e no máximo 200 caracteres (scrypt, N=32768, r=8, p=1, sal
 ```json
 { "email": "player@example.com", "password": "a-very-strong-password" }
 ```
-`200 {"accessToken":"…","tokenType":"Bearer","expiresIn":900,"user":{"id":"…","email":"…","createdAt":"…"}}` · `401 UNAUTHORIZED` (mesma resposta para senha errada e usuário inexistente).
+`200 {"accessToken":"…","tokenType":"Bearer","expiresIn":900,"expiresAt":"…","user":{…}}` · `401 UNAUTHORIZED` (mesma resposta para senha errada e usuário inexistente).
+
+O login também emite uma sessão opaca no cookie `session_token` (`HttpOnly; Secure; SameSite=None`), revogável no logout. O frontend usa apenas o cookie; o access token segue disponível para clientes de API. `POST /auth/logout` revoga a sessão e limpa o cookie.
 
 ### `GET /auth/me`
 `200 {"user":{…}}`
+
+## Inteligência artificial (Gemini)
+
+### `POST /ai/ping`
+Autenticado. Verifica a integração com o Gemini usando um pedido curto:
+```json
+{ "prompt": "Escreva uma frase de campanha sobre educação." }
+```
+`200 {"reply":"…","model":"gemini-2.5-flash"}` · `400 VALIDATION_ERROR` (3–1000 caracteres, propriedades desconhecidas rejeitadas) · `401` · `429 RATE_LIMITED` (escopo próprio `ai`: 10/min) · `503 AI_NOT_CONFIGURED` (sem `GEMINI_API_KEY`) · `503 AI_AUTH_FAILED` · `429 AI_PROVIDER_RATE_LIMITED` · `503 AI_PROVIDER_ERROR` / `AI_PROVIDER_UNAVAILABLE` · `504 AI_TIMEOUT`.
+
+A chave nunca aparece em respostas ou logs; o motor determinístico do jogo continua sendo a única fonte de verdade do estado.
 
 ## Partidas
 

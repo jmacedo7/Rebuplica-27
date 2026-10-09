@@ -62,7 +62,7 @@ export const resolveCors = (
       'access-control-allow-origin':origin,
       'access-control-allow-credentials':'true',
       'access-control-allow-methods':'GET, POST, OPTIONS',
-      'access-control-allow-headers':'authorization, content-type, x-request-id, x-session-id',
+      'access-control-allow-headers':'authorization, content-type, x-request-id',
       'access-control-max-age':'600',
     },
   };

@@ -24,7 +24,7 @@ export interface ProfilePatch {
   readonly pictureUrl?: string | null | undefined;
 }
 
-/** An opaque browser session (Emergent Google login). Only the hash is stored. */
+/** An opaque browser session (HttpOnly cookie after password login). Only the hash is stored. */
 export interface SessionRecord {
   readonly id: string;
   readonly userId: UserId;

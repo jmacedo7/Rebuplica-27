@@ -96,3 +96,16 @@ npm run build
 ```
 
 Os testes de integração criam bancos temporários descartáveis via `TEST_DATABASE_URL`/`DATABASE_URL` (requer `CREATEDB`).
+
+## Camada de IA (Gemini)
+
+`src/ai/gemini.ts` concentra toda a comunicação com o Google Gemini:
+
+- `GEMINI_API_KEY` (obrigatória para uso real, ausente ⇒ `AI_NOT_CONFIGURED`),
+  `GEMINI_MODEL` (padrão `gemini-2.5-flash`) e `GEMINI_TIMEOUT_MS` (padrão 20000).
+- Cadastro da chave: variável de ambiente do processo do backend (host do Node). Nunca
+  no frontend, nunca no repositório. A validação ponta a ponta usa `POST /ai/ping`
+  (endpoint autenticado) e o painel `/painel-ia` do frontend.
+- Falhas do provedor viram códigos estáveis (`AI_AUTH_FAILED`, `AI_TIMEOUT`,
+  `AI_PROVIDER_RATE_LIMITED`, `AI_PROVIDER_ERROR`, `AI_PROVIDER_UNAVAILABLE`) sem
+  expor a chave, URLs internas ou stack traces. Detalhes no ADR-0007.

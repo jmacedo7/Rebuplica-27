@@ -99,18 +99,21 @@ export class RateLimiter {
   }
 }
 
-export type RateLimitScope = 'auth' | 'write' | 'read';
+export type RateLimitScope = 'auth' | 'write' | 'read' | 'ai';
 
 export interface RateLimitPolicy {
   readonly auth: RateLimitRule;
   readonly write: RateLimitRule;
   readonly read: RateLimitRule;
+  /** Optional: falls back to the default AI rule when the caller omits it. */
+  readonly ai?: RateLimitRule | undefined;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimitPolicy = Object.freeze({
   auth: Object.freeze({limit:10,windowMs:60_000}),
   write: Object.freeze({limit:60,windowMs:60_000}),
   read: Object.freeze({limit:300,windowMs:60_000}),
+  ai: Object.freeze({limit:10,windowMs:60_000}),
 });
 
 export interface RateLimiterSet {
@@ -122,6 +125,7 @@ export const createRateLimiterSet = (policy: RateLimitPolicy = DEFAULT_RATE_LIMI
   limiters:{
     auth:new RateLimiter(policy.auth,{scope:'auth'}),
     write:new RateLimiter(policy.write,{scope:'write'}),
+    ai:new RateLimiter(policy.ai ?? {limit:10,windowMs:60_000},{scope:'ai'}),
     read:new RateLimiter(policy.read,{scope:'read'}),
   },
   check(scope,key,now) {

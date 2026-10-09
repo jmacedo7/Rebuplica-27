@@ -1,8 +1,8 @@
 import { createServer } from 'node:net';
 import { createApiServer,type ApiServer } from '../../src/api/server.ts';
-import type { OAuthProfile } from '../../src/api/oauth.ts';
 import { createSilentLogger } from '../../src/api/logging.ts';
 import { createInMemoryPersistence } from '../../src/persistence/in-memory.ts';
+import { Secret } from '../../src/config/index.ts';
 import type { Persistence } from '../../src/persistence/ports.ts';
 import type { RateLimitPolicy } from '../../src/api/rate-limit.ts';
 
@@ -15,8 +15,8 @@ export interface TestServerOptions {
   readonly rateLimits?: RateLimitPolicy | undefined;
   readonly bodyLimitBytes?: number | undefined;
   readonly accessTokenTtlSeconds?: number | undefined;
-  readonly oauthProfileFetcher?: ((sessionId: string) => Promise<OAuthProfile>) | undefined;
   readonly sessionTtlSeconds?: number | undefined;
+  readonly ai?: {readonly apiKey?: string | undefined; readonly model?: string | undefined; readonly timeoutMs?: number | undefined; readonly fetcher?: ((request: {readonly url: string; readonly init: RequestInit}) => Promise<Response>) | undefined} | undefined;
 }
 
 export interface TestServer {
@@ -39,13 +39,18 @@ export const startTestServer = async (options: TestServerOptions = {}): Promise<
     port:0,
     logLevel:'silent',
     persistence,
+    ai:{
+      apiKey:options.ai?.apiKey === undefined ? undefined : new Secret(options.ai.apiKey),
+      model:options.ai?.model ?? 'gemini-test-model',
+      timeoutMs:options.ai?.timeoutMs ?? 2_000,
+      fetcher:options.ai === undefined ? undefined : options.ai.fetcher,
+    },
     auth:{
       jwtSecret:TEST_JWT_SECRET,
       jwtIssuer:'rebuplica-27',
       jwtAudience:'rebuplica-api',
       accessTokenTtlSeconds:options.accessTokenTtlSeconds ?? 900,
       clockSkewSeconds:0,
-      oauthProfileFetcher:options.oauthProfileFetcher,
       sessionTtlSeconds:options.sessionTtlSeconds,
     },
     corsAllowedOrigins:options.corsAllowedOrigins ?? [],

@@ -54,6 +54,11 @@ const main = async (): Promise<void> => {
     port:config.server.port,
     logLevel:config.logLevel,
     persistence,
+    ai:{
+      apiKey:config.ai.apiKey,
+      model:config.ai.model,
+      timeoutMs:config.ai.timeoutMs,
+    },
     auth:{
       jwtSecret:config.auth.jwtSecret.reveal(),
       jwtIssuer:config.auth.jwtIssuer,

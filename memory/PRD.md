@@ -9,7 +9,7 @@ Finalizar um projeto existente de simulação política do Brasil contemporâneo
 3. **Fase 3 — Frontend:** interface jogável consumindo a API real.
 4. **Fases 4/5:** testes E2E do loop completo e preparação de deploy.
 
-Restrições do usuário: não recriar o projeto do zero, preservar arquitetura/regras/determinismo, idioma da interface em **português (BR)**, autenticação via **Emergent-managed Google Auth** (coexistindo com o JWT próprio), visual sóbrio e funcional primeiro.
+Restrições do usuário: não recriar o projeto do zero, preservar arquitetura/regras/determinismo, idioma da interface em **português (BR)**, autenticação por **e-mail e senha** com sessão em cookie HttpOnly (Google/Emergent removidos em 09/10/2026), visual sóbrio e funcional primeiro.
 
 ## Arquitetura em execução
 | Componente | Onde | Porta |

@@ -10,14 +10,15 @@ O jogador começa como candidato à Presidência da República, desenvolve sua c
 
 🚧 **Em desenvolvimento — protótipo jogável conectado ao backend; simulação política completa ainda pendente.**
 
-O repositório já contém um frontend React em português com cadastro/login, autenticação Google, dashboard de partidas, console de partida, decisões genéricas, avanço de turno, saves, histórico de eventos e verificação de replay. Isso é uma fundação funcional, não o jogo político completo.
+O repositório já contém um frontend React em português com cadastro/login por e-mail e senha, dashboard de partidas, console de partida, decisões genéricas, avanço de turno, saves, histórico de eventos e verificação de replay. Isso é uma fundação funcional, não o jogo político completo.
 
 | Área | Estado |
 | --- | --- |
 | Domínio determinístico (RNG por seed, decisões, turnos, snapshots, replay) | ✅ fundação |
 | Persistência PostgreSQL real, transações e concorrência otimista | ✅ |
 | API HTTP para auth, partidas, decisões genéricas, turnos, eventos e saves | ✅ |
-| Autenticação por e-mail/senha e fluxo de sessão Google | ✅ implementados no código; preview ainda requer teste manual após deploy |
+| Autenticação por e-mail/senha com sessão em cookie HttpOnly | ✅ implementadas no código e nos testes |
+| Integração com o Gemini (geração narrativa) | ✅ camada implementada; requer `GEMINI_API_KEY` para validação real |
 | Frontend React em português (login, dashboard, partida, saves, timeline) | ✅ protótipo inicial |
 | CI backend (TypeScript, testes, build e smoke test com PostgreSQL) | ✅ 274 testes passaram no CI em 09/10/2026 |
 | Build/testes automatizados do frontend no CI | ⛔ pendente |
@@ -63,6 +64,9 @@ Todas as variáveis são validadas na inicialização (`src/config/env.ts`) e es
 | `NODE_ENV` | não | `development` | `development`, `test` ou `production`. |
 | `HOST` / `PORT` | não | `127.0.0.1` / `3000` | Endereço de escuta. Em containers use `0.0.0.0`. |
 | `LOG_LEVEL` | não | `info` | `debug`, `info`, `warn`, `error` ou `silent`. |
+| `GEMINI_API_KEY` | não | — | Chave da API do Google Gemini. Ausente = integração pendente (`/ai/ping` responde `AI_NOT_CONFIGURED`). Nunca no frontend, nunca no repositório. |
+| `GEMINI_MODEL` | não | `gemini-2.5-flash` | Identificador do modelo usado nas chamadas `generateContent`. |
+| `GEMINI_TIMEOUT_MS` | não | `20000` | Tempo limite por chamada ao provedor (1000–60000 ms). |
 
 ## Banco de dados e migrations
 

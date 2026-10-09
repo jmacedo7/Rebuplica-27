@@ -6,12 +6,6 @@ const BASE = configuredBackendUrl
   ? `${configuredBackendUrl.replace(/\/api$/i, '')}/api`
   : '/api';
 
-const TOKEN_KEY = 'rebuplica27.accessToken';
-
-export const readToken = () => localStorage.getItem(TOKEN_KEY);
-export const storeToken = (token) => localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
-
 export class ApiError extends Error {
   constructor(status, code, message) {
     super(message || code);
@@ -30,20 +24,27 @@ const parse = async (response) => {
   }
 };
 
+// Endpoints that legitimately answer 401 while the user is on the login screen.
+const AUTH_FREE_PATHS = ['/auth/me', '/auth/login', '/auth/register', '/auth/logout'];
+
 export const api = async (path, { method = 'GET', body, headers = {} } = {}) => {
-  const token = readToken();
   const response = await fetch(`${BASE}${path}`, {
     method,
+    // The session lives in an HttpOnly cookie: the browser sends it automatically
+    // and no token is ever kept in localStorage.
     credentials: 'include',
     headers: {
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const payload = await parse(response);
   if (!response.ok) {
+    if (response.status === 401 && !AUTH_FREE_PATHS.includes(path.split('?')[0])) {
+      // Let the auth context react (clear the user; protected routes redirect).
+      window.dispatchEvent(new CustomEvent('rebuplica:unauthorized'));
+    }
     const error = payload.error || {};
     throw new ApiError(response.status, error.code || 'UNKNOWN', error.message);
   }
@@ -53,8 +54,11 @@ export const api = async (path, { method = 'GET', body, headers = {} } = {}) => 
 export const auth = {
   me: () => api('/auth/me'),
   login: (email, password) => api('/auth/login', { method: 'POST', body: { email, password } }),
-  register: (email, password) => api('/auth/register', { method: 'POST', body: { email, password } }),
-  exchangeSession: (sessionId) => api('/auth/session', { method: 'POST', body: { session_id: sessionId } }),
+  register: (email, password, displayName) =>
+    api('/auth/register', {
+      method: 'POST',
+      body: displayName === undefined || displayName === null ? { email, password } : { email, password, displayName },
+    }),
   logout: () => api('/auth/logout', { method: 'POST', body: {} }),
 };
 
@@ -69,4 +73,8 @@ export const games = {
   saves: (id) => api(`/games/${id}/saves`),
   createSave: (id) => api(`/games/${id}/saves`, { method: 'POST', body: {} }),
   restore: (id, saveId) => api(`/games/${id}/saves/${saveId}/restore`, { method: 'POST', body: {} }),
+};
+
+export const ai = {
+  ping: (prompt) => api('/ai/ping', { method: 'POST', body: { prompt } }),
 };

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { auth, clearToken, storeToken } from '../api/client';
+import { auth } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -21,23 +21,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // CRITICAL: coming back from OAuth, AuthCallback exchanges the session_id first.
-    if (window.location.hash?.includes('session_id=')) {
-      setLoading(false);
-      return;
-    }
     checkAuth();
+    // Any authenticated call that answers 401 (expired or revoked session)
+    // clears the user so protected routes send the player back to the login.
+    const onUnauthorized = () => setUser(null);
+    window.addEventListener('rebuplica:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('rebuplica:unauthorized', onUnauthorized);
   }, [checkAuth]);
 
   const loginWithPassword = async (email, password) => {
     const result = await auth.login(email, password);
-    storeToken(result.accessToken);
+    // The server also sets the HttpOnly session cookie on this response.
     setUser(result.user);
     return result.user;
   };
 
-  const registerWithPassword = async (email, password) => {
-    await auth.register(email, password);
+  const registerWithPassword = async (email, password, displayName) => {
+    await auth.register(email, password, displayName);
     return loginWithPassword(email, password);
   };
 
@@ -45,9 +45,8 @@ export function AuthProvider({ children }) {
     try {
       await auth.logout();
     } catch {
-      // a logout must always clear the local state
+      // logout must always clear the local state, even if the call fails
     }
-    clearToken();
     setUser(null);
   };
 

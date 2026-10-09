@@ -15,6 +15,9 @@ export const ENV_VAR_NAMES = [
   'JWT_AUDIENCE',
   'ACCESS_TOKEN_TTL_SECONDS',
   'CORS_ALLOWED_ORIGINS',
+  'GEMINI_API_KEY',
+  'GEMINI_MODEL',
+  'GEMINI_TIMEOUT_MS',
 ] as const;
 
 export type EnvVarName = (typeof ENV_VAR_NAMES)[number];
@@ -41,6 +44,11 @@ const REJECTED_PRODUCTION_SECRETS: readonly string[] = Object.freeze([
 const MINIMUM_JWT_SECRET_LENGTH = 32;
 const MINIMUM_JWT_SECRET_ALPHABET = 8;
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 900;
+const MINIMUM_GEMINI_API_KEY_LENGTH = 20;
+const DEFAULT_GEMINI_TIMEOUT_MS = 20_000;
+const MINIMUM_GEMINI_TIMEOUT_MS = 1_000;
+const MAXIMUM_GEMINI_TIMEOUT_MS = 60_000;
+const GEMINI_MODEL_PATTERN = /^[a-z0-9][a-z0-9.-]{0,63}$/u;
 const MINIMUM_ACCESS_TOKEN_TTL_SECONDS = 60;
 const MAXIMUM_ACCESS_TOKEN_TTL_SECONDS = 86_400;
 
@@ -63,6 +71,12 @@ export interface AppConfig {
     readonly accessTokenTtlSeconds: number;
   };
   readonly http: { readonly corsAllowedOrigins: readonly string[] };
+  readonly ai: {
+    /** Absent key means the Gemini integration is configured but pending validation. */
+    readonly apiKey: Secret<string> | undefined;
+    readonly model: string;
+    readonly timeoutMs: number;
+  };
 }
 
 const DEFAULTS = {
@@ -197,6 +211,27 @@ function readJwtSecret(env: EnvSource,nodeEnv: NodeEnv,issues: ConfigIssue[]): S
   return secret;
 }
 
+/** Optional secret: absent is fine (integration pending), a malformed value is an issue. */
+function readOptionalSecret(env: EnvSource,name: EnvVarName,issues: ConfigIssue[],minimumLength: number): Secret<string> | undefined {
+  const raw = read(env,name);
+  if (raw === undefined) return undefined;
+  if (raw.length < minimumLength) {
+    issues.push({variable:name,message:`must contain at least ${minimumLength} characters (value hidden because it is a secret)`});
+    return undefined;
+  }
+  return new Secret(raw);
+}
+
+function readGeminiModel(env: EnvSource,name: EnvVarName,issues: ConfigIssue[]): string {
+  const raw = read(env,name);
+  if (raw === undefined) return 'gemini-2.5-flash';
+  if (!GEMINI_MODEL_PATTERN.test(raw)) {
+    issues.push({variable:name,message:`must be a Gemini model identifier such as gemini-2.5-flash (received "${raw}")`});
+    return 'gemini-2.5-flash';
+  }
+  return raw;
+}
+
 function readCorsOrigins(env: EnvSource,name: EnvVarName,issues: ConfigIssue[]): readonly string[] {
   const raw = read(env,name);
   if (raw === undefined) return Object.freeze([]);
@@ -243,6 +278,9 @@ export function loadConfig(env: EnvSource): AppConfig {
     issues,
   );
   const corsAllowedOrigins = readCorsOrigins(env,'CORS_ALLOWED_ORIGINS',issues);
+  const geminiApiKey = readOptionalSecret(env,'GEMINI_API_KEY',issues,MINIMUM_GEMINI_API_KEY_LENGTH);
+  const geminiModel = readGeminiModel(env,'GEMINI_MODEL',issues);
+  const geminiTimeoutMs = readInteger(env,'GEMINI_TIMEOUT_MS',DEFAULT_GEMINI_TIMEOUT_MS,MINIMUM_GEMINI_TIMEOUT_MS,MAXIMUM_GEMINI_TIMEOUT_MS,issues);
   const jwtIssuer = read(env,'JWT_ISSUER') ?? 'rebuplica-27';
   const jwtAudience = read(env,'JWT_AUDIENCE') ?? 'rebuplica-api';
 
@@ -262,5 +300,6 @@ export function loadConfig(env: EnvSource): AppConfig {
     }),
     auth: Object.freeze({jwtSecret,jwtIssuer,jwtAudience,accessTokenTtlSeconds}),
     http: Object.freeze({corsAllowedOrigins}),
+    ai: Object.freeze({apiKey:geminiApiKey,model:geminiModel,timeoutMs:geminiTimeoutMs}),
   });
 }

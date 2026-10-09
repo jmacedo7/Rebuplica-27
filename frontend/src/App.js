@@ -1,7 +1,7 @@
 import React from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import AuthCallback from './pages/AuthCallback';
+import AiCheck from './pages/AiCheck';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Match from './pages/Match';
@@ -27,8 +27,6 @@ function Entry() {
 }
 
 function AppRouter() {
-  const location = useLocation();
-  if (location.hash?.includes('session_id=')) return <AuthCallback />;
   return (
     <Routes>
       <Route path="/" element={<Entry />} />
@@ -45,6 +43,14 @@ function AppRouter() {
         element={
           <Protected>
             <Match />
+          </Protected>
+        }
+      />
+      <Route
+        path="/painel-ia"
+        element={
+          <Protected>
+            <AiCheck />
           </Protected>
         }
       />

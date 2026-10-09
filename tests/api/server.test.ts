@@ -449,7 +449,7 @@ describe('routing and protocol level behaviour',()=>{
       assert.equal(allowed.headers.get('access-control-allow-origin'),'https://app.example');
       assert.equal(allowed.headers.get('access-control-allow-credentials'),'true');
       assert.match(allowed.headers.get('access-control-allow-headers') ?? '',/authorization/u);
-      assert.match(allowed.headers.get('access-control-allow-headers') ?? '',/x-session-id/u);
+      assert.doesNotMatch(allowed.headers.get('access-control-allow-headers') ?? '',/x-session-id/u);
       assert.equal(allowed.headers.get('vary'),'Origin');
       const denied=await request(server,'/games',{method:'OPTIONS',origin:'https://evil.example'});
       assert.equal(denied.status,403);
