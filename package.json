@@ -1,8 +1,8 @@
 {
-  "name": "rebuplica-27",
+  "name": "republica-27",
   "version": "0.1.0",
   "private": true,
-  "description": "Rebuplica 27 - backend foundation for a political and government simulation game set in contemporary Brazil.",
+  "description": "República 27 - backend foundation for a political and government simulation game set in contemporary Brazil.",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
