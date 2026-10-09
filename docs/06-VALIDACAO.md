@@ -100,3 +100,14 @@ Escopo executado nesta etapa (sem commits; alterações no diretório de trabalh
   coberto por teste, não é falha.
 - Teste manual do fluxo completo de login por cookie com frontend e backend em origens
   diferentes (exige `CORS_ALLOWED_ORIGINS` configurado e HTTPS).
+
+### Adendo — duas opções de chave Gemini (09/10/2026)
+
+Migration `0005_ai_keys_and_usage.sql` (tabelas `user_ai_keys` e `ai_usage`, aditiva e
+idempotente), `src/security/secret-box.ts`, `src/api/ai-service.ts`, rotas `GET/POST
+/ai/key`, `POST /ai/key/remove` e painel `/painel-ia` com as duas opções. Verificado em
+ambiente sem PostgreSQL: `npm run typecheck` sem erros; `npm test` com 277 testes e 0
+falhas (16 novos: criptografia, chave pessoal vs. do projeto, limite diário, isolamento
+entre jogadores, falha do provedor sem consumir cota); build do frontend compilado. A
+migration 0005 e as consultas SQL novas (`ON CONFLICT` do contador diário) **não foram
+executadas contra um PostgreSQL real** neste ambiente: dependem do CI/`TEST_DATABASE_URL`.

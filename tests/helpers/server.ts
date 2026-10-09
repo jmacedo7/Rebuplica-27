@@ -16,7 +16,7 @@ export interface TestServerOptions {
   readonly bodyLimitBytes?: number | undefined;
   readonly accessTokenTtlSeconds?: number | undefined;
   readonly sessionTtlSeconds?: number | undefined;
-  readonly ai?: {readonly apiKey?: string | undefined; readonly model?: string | undefined; readonly timeoutMs?: number | undefined; readonly fetcher?: ((request: {readonly url: string; readonly init: RequestInit}) => Promise<Response>) | undefined} | undefined;
+  readonly ai?: {readonly apiKey?: string | undefined; readonly model?: string | undefined; readonly timeoutMs?: number | undefined; readonly dailyLimit?: number | undefined; readonly encryptionSecret?: string | undefined; readonly fetcher?: ((request: {readonly url: string; readonly init: RequestInit}) => Promise<Response>) | undefined} | undefined;
 }
 
 export interface TestServer {
@@ -43,6 +43,8 @@ export const startTestServer = async (options: TestServerOptions = {}): Promise<
       apiKey:options.ai?.apiKey === undefined ? undefined : new Secret(options.ai.apiKey),
       model:options.ai?.model ?? 'gemini-test-model',
       timeoutMs:options.ai?.timeoutMs ?? 2_000,
+      dailyLimit:options.ai?.dailyLimit,
+      encryptionSecret:options.ai?.encryptionSecret === undefined ? undefined : new Secret(options.ai.encryptionSecret),
       fetcher:options.ai === undefined ? undefined : options.ai.fetcher,
     },
     auth:{

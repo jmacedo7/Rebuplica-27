@@ -26,3 +26,16 @@ continua responsável por regras, validações, alterações de estado e persist
 A IA jamais escreve no banco nem aplica decisões políticas sem passar pelas
 validações do domínio. A dependência do provedor fica confinada a `src/ai/gemini.ts`,
 com o `fetcher` injetável para que os testes nunca realizem chamadas reais.
+
+## Adendo (09/10/2026): duas opções de chave
+- **Chave do projeto** (`GEMINI_API_KEY`): gratuita para o jogador, limitada por
+  `GEMINI_DAILY_LIMIT` consultas por jogador por dia UTC (tabela `ai_usage`, contagem
+  atômica no PostgreSQL). Falhas do provedor devolvem a cota.
+- **Chave pessoal**: cadastrada pelo jogador, criptografada com AES-256-GCM
+  (`src/security/secret-box.ts`, segredo mestre `AI_KEY_ENCRYPTION_SECRET`) em
+  `user_ai_keys`; sem o limite do projeto, o jogador arca com o próprio custo.
+- Quando o projeto passar a cobrar (após o período gratuito), o ponto de extensão é
+  `AiService.generate` em `src/api/ai-service.ts`, que já separa a origem da chave
+  (`source`) e a cota. O modelo de cobrança ainda será definido.
+- Rotação do `AI_KEY_ENCRYPTION_SECRET` invalida as chaves salvas: os jogadores
+  precisam cadastrá-las de novo (decifrar com outro segredo falha de forma segura).

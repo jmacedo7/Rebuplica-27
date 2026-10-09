@@ -12,6 +12,8 @@ import {
   SaveVersionConflictError,
 } from './errors.ts';
 import type {
+  AiKeyRepository,
+  AiUsageRepository,
   AuditEntry,
   AuditRepository,
   EventListOptions,
@@ -30,6 +32,7 @@ import type {
   ProfilePatch,
   SessionRecord,
   SessionRepository,
+  UserAiKeyRecord,
   UserRecord,
   UserRepository,
 } from './ports.ts';
@@ -286,6 +289,82 @@ class PostgresSessionRepository implements SessionRepository {
   }
 }
 
+const mapAiKey = (row: Row): UserAiKeyRecord => ({
+  userId: text(row['user_id'],'user_ai_keys.user_id'),
+  provider: text(row['provider'],'user_ai_keys.provider'),
+  encryptedKey: text(row['encrypted_key'],'user_ai_keys.encrypted_key'),
+  keyHint: text(row['key_hint'],'user_ai_keys.key_hint'),
+  updatedAt: timestamp(row['updated_at'],'user_ai_keys.updated_at'),
+});
+
+class PostgresAiKeyRepository implements AiKeyRepository {
+  readonly #db: Queryable;
+  constructor(db: Queryable) {
+    this.#db = db;
+  }
+  async find(userId: UserId): Promise<UserAiKeyRecord | null> {
+    const result = await this.#db.query(
+      'SELECT user_id, provider, encrypted_key, key_hint, updated_at FROM user_ai_keys WHERE user_id = $1',
+      [requireUuid(userId,'user_ai_keys.user_id')],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : mapAiKey(row);
+  }
+  async upsert(userId: UserId,encryptedKey: string,keyHint: string): Promise<UserAiKeyRecord> {
+    const result = await this.#db.query(
+      `INSERT INTO user_ai_keys (user_id, provider, encrypted_key, key_hint)
+       VALUES ($1, 'gemini', $2, $3)
+       ON CONFLICT (user_id) DO UPDATE
+         SET encrypted_key = EXCLUDED.encrypted_key, key_hint = EXCLUDED.key_hint, updated_at = now()
+       RETURNING user_id, provider, encrypted_key, key_hint, updated_at`,
+      [requireUuid(userId,'user_ai_keys.user_id'),encryptedKey,keyHint],
+    );
+    const row = result.rows[0];
+    if (row === undefined) throw new InvalidStoredDataError('user_ai_keys upsert returned no row');
+    return mapAiKey(row);
+  }
+  async remove(userId: UserId): Promise<boolean> {
+    const result = await this.#db.query('DELETE FROM user_ai_keys WHERE user_id = $1',[requireUuid(userId,'user_ai_keys.user_id')]);
+    return (result.rowCount ?? 0) > 0;
+  }
+}
+
+class PostgresAiUsageRepository implements AiUsageRepository {
+  readonly #db: Queryable;
+  constructor(db: Queryable) {
+    this.#db = db;
+  }
+  async countToday(userId: UserId): Promise<number> {
+    const result = await this.#db.query(
+      "SELECT request_count FROM ai_usage WHERE user_id = $1 AND usage_date = (now() AT TIME ZONE 'utc')::date",
+      [requireUuid(userId,'ai_usage.user_id')],
+    );
+    const row = result.rows[0];
+    return row === undefined ? 0 : Number(row['request_count']);
+  }
+  async tryConsume(userId: UserId,dailyLimit: number): Promise<boolean> {
+    // Single atomic statement: the conditional UPDATE in ON CONFLICT cannot overshoot the limit
+    // even under concurrent requests.
+    const result = await this.#db.query(
+      `INSERT INTO ai_usage (user_id, usage_date, request_count)
+       SELECT $1, (now() AT TIME ZONE 'utc')::date, 1 WHERE $2 >= 1
+       ON CONFLICT (user_id, usage_date) DO UPDATE
+         SET request_count = ai_usage.request_count + 1
+         WHERE ai_usage.request_count < $2
+       RETURNING request_count`,
+      [requireUuid(userId,'ai_usage.user_id'),dailyLimit],
+    );
+    return result.rows.length > 0;
+  }
+  async release(userId: UserId): Promise<void> {
+    await this.#db.query(
+      `UPDATE ai_usage SET request_count = request_count - 1
+       WHERE user_id = $1 AND usage_date = (now() AT TIME ZONE 'utc')::date AND request_count > 0`,
+      [requireUuid(userId,'ai_usage.user_id')],
+    );
+  }
+}
+
 class PostgresGameRepository implements GameRepository {
   readonly #db: Queryable;
   constructor(db: Queryable) {
@@ -534,6 +613,8 @@ export const createPostgresPersistence = (options: PostgresPersistenceOptions): 
   const repositories: Repositories = {
     users: new PostgresUserRepository(root),
     sessions: new PostgresSessionRepository(root),
+    aiKeys: new PostgresAiKeyRepository(root),
+    aiUsage: new PostgresAiUsageRepository(root),
     games: new PostgresGameRepository(root),
     saves: new PostgresSaveRepository(root),
     events: new PostgresEventRepository(root),
@@ -553,6 +634,8 @@ export const createPostgresPersistence = (options: PostgresPersistenceOptions): 
       const scopedRepositories: Repositories = {
         users: new PostgresUserRepository(scoped),
         sessions: new PostgresSessionRepository(scoped),
+        aiKeys: new PostgresAiKeyRepository(scoped),
+        aiUsage: new PostgresAiUsageRepository(scoped),
         games: new PostgresGameRepository(scoped),
         saves: new PostgresSaveRepository(scoped),
         events: new PostgresEventRepository(scoped),

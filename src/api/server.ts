@@ -31,6 +31,7 @@ import {
   type RateLimitScope,
 } from './rate-limit.ts';
 import { GeminiService } from '../ai/gemini.ts';
+import { AiService } from './ai-service.ts';
 import { Router } from './router.ts';
 import {
   parseAfterVersion,
@@ -67,6 +68,10 @@ export interface ApiServerOptions {
     readonly apiKey?: Secret<string> | undefined;
     readonly model: string;
     readonly timeoutMs: number;
+    /** Requests per player per UTC day served with the shared project key (default 20). */
+    readonly dailyLimit?: number | undefined;
+    /** Master secret for player keys at rest. Absent = personal keys disabled. */
+    readonly encryptionSecret?: Secret<string> | undefined;
     /** Injectable so tests never call the real provider. */
     readonly fetcher?: GeminiFetcher | undefined;
   };
@@ -82,7 +87,7 @@ export interface ApiServer {
   readonly logger: Logger;
   readonly auth: AuthService;
   readonly games: GameService;
-  readonly ai: GeminiService;
+  readonly ai: AiService;
   listen(): Promise<{host: string; port: number}>;
   /** Stops accepting connections, drains in-flight requests and hard-closes after the timeout. */
   close(options?: {readonly timeoutMs?: number | undefined}): Promise<void>;
@@ -102,7 +107,7 @@ interface RouteContext {
   readonly principal: Principal | null;
   readonly auth: AuthService;
   readonly games: GameService;
-  readonly ai: GeminiService;
+  readonly ai: AiService;
   readonly persistence: Persistence;
   readonly uptimeSeconds: number;
   /** Opaque browser session token presented by the caller (cookie or bearer). */
@@ -295,16 +300,62 @@ const routes: readonly RouteDefinition[] = [
     },
   },
   {
+    method:'GET',
+    pattern:'/ai/key',
+    auth:true,
+    handler: async context => {
+      const principal = requirePrincipal(context);
+      return {status:200,body:{ai:await context.ai.status(principal.id)}};
+    },
+  },
+  {
+    method:'POST',
+    pattern:'/ai/key',
+    auth:true,
+    handler: async context => {
+      const principal = requirePrincipal(context);
+      const body = await context.readBody();
+      rejectUnknownKeys(body,['apiKey']);
+      const apiKey = requireString(body,'apiKey',{minLength:20,maxLength:200});
+      const status = await context.ai.saveKey(principal.id,apiKey);
+      await context.persistence.audit.record({
+        actorId:principal.id,
+        action:'ai.key.saved',
+        resourceType:'user_ai_key',
+        resourceId:principal.id,
+        metadata:{},
+      });
+      return {status:200,body:{ai:status}};
+    },
+  },
+  {
+    method:'POST',
+    pattern:'/ai/key/remove',
+    auth:true,
+    handler: async context => {
+      const principal = requirePrincipal(context);
+      const status = await context.ai.removeKey(principal.id);
+      await context.persistence.audit.record({
+        actorId:principal.id,
+        action:'ai.key.removed',
+        resourceType:'user_ai_key',
+        resourceId:principal.id,
+        metadata:{},
+      });
+      return {status:200,body:{ai:status}};
+    },
+  },
+  {
     method:'POST',
     pattern:'/ai/ping',
     auth:true,
     handler: async context => {
-      requirePrincipal(context);
+      const principal = requirePrincipal(context);
       const body = await context.readBody();
       rejectUnknownKeys(body,['prompt']);
       const prompt = requireString(body,'prompt',{minLength:3,maxLength:1_000});
-      const result = await context.ai.generate(prompt);
-      return {status:200,body:{reply:result.text,model:result.model}};
+      const result = await context.ai.generate(principal.id,prompt);
+      return {status:200,body:{reply:result.text,model:result.model,source:result.source}};
     },
   },
   {
@@ -354,6 +405,7 @@ const rateScopeFor = (method: string,pathname: string): RateLimitScope | null =>
   // Session introspection is a read: the page does it on every load.
   if (pathname === '/auth/me') return 'read';
   if (pathname === '/ai/ping') return 'ai';
+  if (pathname === '/ai/key' || pathname === '/ai/key/remove') return method === 'GET' ? 'read' : 'write';
   if (pathname.startsWith('/auth/')) return 'auth';
   return method === 'GET' ? 'read' : 'write';
 };
@@ -391,11 +443,17 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
     sessionTtlSeconds:options.auth.sessionTtlSeconds,
   });
   const games = new GameService(options.persistence);
-  const ai = new GeminiService({
+  const gemini = new GeminiService({
     apiKey:options.ai.apiKey,
     model:options.ai.model,
     timeoutMs:options.ai.timeoutMs,
     fetcher:options.ai.fetcher,
+  });
+  const ai = new AiService({
+    gemini,
+    persistence:options.persistence,
+    dailyLimit:options.ai.dailyLimit ?? 20,
+    encryptionSecret:options.ai.encryptionSecret,
   });
   const limiters = createRateLimiterSet(options.rateLimits ?? DEFAULT_RATE_LIMITS);
   const allowedOrigins = options.corsAllowedOrigins;

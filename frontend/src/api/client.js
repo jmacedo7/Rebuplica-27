@@ -77,4 +77,7 @@ export const games = {
 
 export const ai = {
   ping: (prompt) => api('/ai/ping', { method: 'POST', body: { prompt } }),
+  status: () => api('/ai/key'),
+  saveKey: (apiKey) => api('/ai/key', { method: 'POST', body: { apiKey } }),
+  removeKey: () => api('/ai/key/remove', { method: 'POST', body: {} }),
 };

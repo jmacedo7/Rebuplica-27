@@ -82,14 +82,25 @@ O login também emite uma sessão opaca no cookie `session_token` (`HttpOnly; Se
 
 ## Inteligência artificial (Gemini)
 
+O jogador tem **duas opções** de chave: a **chave do projeto** (`GEMINI_API_KEY`, gratuita, com limite diário por jogador) ou a **sua própria chave** (guardada criptografada, sem o limite do projeto). Havendo chave pessoal, ela é usada; senão, a do projeto.
+
+### `GET /ai/key`
+Autenticado. `200 {"ai":{"personalKeysEnabled":true,"personalKey":{"configured":true,"hint":"AIza…WVU"},"defaultKey":{"available":true,"dailyLimit":20,"usedToday":3,"remainingToday":17}}}`. A chave nunca é devolvida, só uma dica mascarada.
+
+### `POST /ai/key`
+Autenticado. Salva/substitui a chave pessoal: `{"apiKey":"…"}` (20–200 caracteres, sem espaços). Criptografada com AES-256-GCM antes de ir ao banco. `200` (mesmo corpo do `GET`) · `400 VALIDATION_ERROR` · `503 AI_NOT_CONFIGURED` se o servidor não tem `AI_KEY_ENCRYPTION_SECRET`.
+
+### `POST /ai/key/remove`
+Autenticado. Remove a chave pessoal (`{}`). `200` com o status atualizado.
+
 ### `POST /ai/ping`
-Autenticado. Verifica a integração com o Gemini usando um pedido curto:
+Autenticado. Verifica a integração com um pedido curto:
 ```json
 { "prompt": "Escreva uma frase de campanha sobre educação." }
 ```
-`200 {"reply":"…","model":"gemini-2.5-flash"}` · `400 VALIDATION_ERROR` (3–1000 caracteres, propriedades desconhecidas rejeitadas) · `401` · `429 RATE_LIMITED` (escopo próprio `ai`: 10/min) · `503 AI_NOT_CONFIGURED` (sem `GEMINI_API_KEY`) · `503 AI_AUTH_FAILED` · `429 AI_PROVIDER_RATE_LIMITED` · `503 AI_PROVIDER_ERROR` / `AI_PROVIDER_UNAVAILABLE` · `504 AI_TIMEOUT`.
+`200 {"reply":"…","model":"gemini-2.5-flash","source":"personal"|"default"}` · `400 VALIDATION_ERROR` (3–1000 caracteres, propriedades desconhecidas rejeitadas) · `401` · `429 RATE_LIMITED` (escopo `ai`: 10/min) · `429 AI_DAILY_LIMIT_REACHED` (limite diário da chave do projeto) · `503 AI_NOT_CONFIGURED` (sem chave pessoal nem do projeto) · `503 AI_AUTH_FAILED` · `429 AI_PROVIDER_RATE_LIMITED` · `503 AI_PROVIDER_ERROR` / `AI_PROVIDER_UNAVAILABLE` · `504 AI_TIMEOUT`.
 
-A chave nunca aparece em respostas ou logs; o motor determinístico do jogo continua sendo a única fonte de verdade do estado.
+Falhas do provedor não consomem a cota diária. A chave nunca aparece em respostas ou logs; o motor determinístico continua sendo a única fonte de verdade do estado.
 
 ## Partidas
 

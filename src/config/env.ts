@@ -18,6 +18,8 @@ export const ENV_VAR_NAMES = [
   'GEMINI_API_KEY',
   'GEMINI_MODEL',
   'GEMINI_TIMEOUT_MS',
+  'GEMINI_DAILY_LIMIT',
+  'AI_KEY_ENCRYPTION_SECRET',
 ] as const;
 
 export type EnvVarName = (typeof ENV_VAR_NAMES)[number];
@@ -48,6 +50,9 @@ const MINIMUM_GEMINI_API_KEY_LENGTH = 20;
 const DEFAULT_GEMINI_TIMEOUT_MS = 20_000;
 const MINIMUM_GEMINI_TIMEOUT_MS = 1_000;
 const MAXIMUM_GEMINI_TIMEOUT_MS = 60_000;
+const DEFAULT_GEMINI_DAILY_LIMIT = 20;
+const MAXIMUM_GEMINI_DAILY_LIMIT = 10_000;
+const MINIMUM_ENCRYPTION_SECRET_LENGTH = 32;
 const GEMINI_MODEL_PATTERN = /^[a-z0-9][a-z0-9.-]{0,63}$/u;
 const MINIMUM_ACCESS_TOKEN_TTL_SECONDS = 60;
 const MAXIMUM_ACCESS_TOKEN_TTL_SECONDS = 86_400;
@@ -76,6 +81,10 @@ export interface AppConfig {
     readonly apiKey: Secret<string> | undefined;
     readonly model: string;
     readonly timeoutMs: number;
+    /** Requests per player per UTC day served with the shared project key. */
+    readonly dailyLimit: number;
+    /** Master secret that encrypts player keys at rest. Absent = personal keys disabled. */
+    readonly encryptionSecret: Secret<string> | undefined;
   };
 }
 
@@ -281,6 +290,8 @@ export function loadConfig(env: EnvSource): AppConfig {
   const geminiApiKey = readOptionalSecret(env,'GEMINI_API_KEY',issues,MINIMUM_GEMINI_API_KEY_LENGTH);
   const geminiModel = readGeminiModel(env,'GEMINI_MODEL',issues);
   const geminiTimeoutMs = readInteger(env,'GEMINI_TIMEOUT_MS',DEFAULT_GEMINI_TIMEOUT_MS,MINIMUM_GEMINI_TIMEOUT_MS,MAXIMUM_GEMINI_TIMEOUT_MS,issues);
+  const geminiDailyLimit = readInteger(env,'GEMINI_DAILY_LIMIT',DEFAULT_GEMINI_DAILY_LIMIT,1,MAXIMUM_GEMINI_DAILY_LIMIT,issues);
+  const aiEncryptionSecret = readOptionalSecret(env,'AI_KEY_ENCRYPTION_SECRET',issues,MINIMUM_ENCRYPTION_SECRET_LENGTH);
   const jwtIssuer = read(env,'JWT_ISSUER') ?? 'rebuplica-27';
   const jwtAudience = read(env,'JWT_AUDIENCE') ?? 'rebuplica-api';
 
@@ -300,6 +311,6 @@ export function loadConfig(env: EnvSource): AppConfig {
     }),
     auth: Object.freeze({jwtSecret,jwtIssuer,jwtAudience,accessTokenTtlSeconds}),
     http: Object.freeze({corsAllowedOrigins}),
-    ai: Object.freeze({apiKey:geminiApiKey,model:geminiModel,timeoutMs:geminiTimeoutMs}),
+    ai: Object.freeze({apiKey:geminiApiKey,model:geminiModel,timeoutMs:geminiTimeoutMs,dailyLimit:geminiDailyLimit,encryptionSecret:aiEncryptionSecret}),
   });
 }

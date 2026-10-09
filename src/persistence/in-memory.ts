@@ -15,6 +15,8 @@ import {
   SaveVersionConflictError,
 } from './errors.ts';
 import type {
+  AiKeyRepository,
+  AiUsageRepository,
   AuditEntry,
   AuditRepository,
   EventListOptions,
@@ -33,6 +35,7 @@ import type {
   SaveRepository,
   SessionRecord,
   SessionRepository,
+  UserAiKeyRecord,
   UserRecord,
   UserRepository,
 } from './ports.ts';
@@ -100,6 +103,44 @@ class InMemorySessionRepository implements SessionRepository {
   async revokeByHash(tokenHash: string): Promise<void> {
     const stored = this.records.get(tokenHash);
     if (stored !== undefined) this.records.set(tokenHash,{...stored,revoked:true});
+  }
+}
+
+class InMemoryAiKeyRepository implements AiKeyRepository {
+  readonly records = new Map<UserId,UserAiKeyRecord>();
+  async find(userId: UserId): Promise<UserAiKeyRecord | null> {
+    const record = this.records.get(userId);
+    return record === undefined ? null : clone(record);
+  }
+  async upsert(userId: UserId,encryptedKey: string,keyHint: string): Promise<UserAiKeyRecord> {
+    const stored: UserAiKeyRecord = {userId,provider:'gemini',encryptedKey,keyHint,updatedAt:nowIso()};
+    this.records.set(userId,stored);
+    return clone(stored);
+  }
+  async remove(userId: UserId): Promise<boolean> {
+    return this.records.delete(userId);
+  }
+}
+
+const utcDay = (): string => new Date().toISOString().slice(0,10);
+
+class InMemoryAiUsageRepository implements AiUsageRepository {
+  readonly counts = new Map<string,number>();
+  readonly #key = (userId: UserId): string => `${userId}:${utcDay()}`;
+  async countToday(userId: UserId): Promise<number> {
+    return this.counts.get(this.#key(userId)) ?? 0;
+  }
+  async tryConsume(userId: UserId,dailyLimit: number): Promise<boolean> {
+    const key = this.#key(userId);
+    const current = this.counts.get(key) ?? 0;
+    if (current >= dailyLimit) return false;
+    this.counts.set(key,current + 1);
+    return true;
+  }
+  async release(userId: UserId): Promise<void> {
+    const key = this.#key(userId);
+    const current = this.counts.get(key) ?? 0;
+    if (current > 0) this.counts.set(key,current - 1);
   }
 }
 
@@ -209,6 +250,8 @@ class Mutex {
 export interface InMemoryPersistence extends Persistence {
   readonly users: InMemoryUserRepository;
   readonly sessions: InMemorySessionRepository;
+  readonly aiKeys: InMemoryAiKeyRepository;
+  readonly aiUsage: InMemoryAiUsageRepository;
   readonly games: InMemoryGameRepository;
   readonly saves: InMemorySaveRepository;
   readonly events: InMemoryEventRepository;
@@ -218,15 +261,19 @@ export interface InMemoryPersistence extends Persistence {
 export const createInMemoryPersistence = (): InMemoryPersistence => {
   const users = new InMemoryUserRepository();
   const sessions = new InMemorySessionRepository();
+  const aiKeys = new InMemoryAiKeyRepository();
+  const aiUsage = new InMemoryAiUsageRepository();
   const games = new InMemoryGameRepository();
   const saves = new InMemorySaveRepository();
   const events = new InMemoryEventRepository();
   const audit = new InMemoryAuditRepository();
-  const repositories: Repositories = {users,sessions,games,saves,events,audit};
+  const repositories: Repositories = {users,sessions,aiKeys,aiUsage,games,saves,events,audit};
   const mutex = new Mutex();
   return {
     users,
     sessions,
+    aiKeys,
+    aiUsage,
     games,
     saves,
     events,
@@ -241,6 +288,8 @@ export const createInMemoryPersistence = (): InMemoryPersistence => {
 export class InMemoryRepositories {
   readonly users = new InMemoryUserRepository();
   readonly sessions = new InMemorySessionRepository();
+  readonly aiKeys = new InMemoryAiKeyRepository();
+  readonly aiUsage = new InMemoryAiUsageRepository();
   readonly games = new InMemoryGameRepository();
   readonly saves = new InMemorySaveRepository();
   readonly events = new InMemoryEventRepository();

@@ -42,6 +42,15 @@ export interface NewSessionRecord {
   readonly expiresAt: string;
 }
 
+/** A player's own Gemini key, stored encrypted. `keyHint` is a safe, masked preview. */
+export interface UserAiKeyRecord {
+  readonly userId: UserId;
+  readonly provider: string;
+  readonly encryptedKey: string;
+  readonly keyHint: string;
+  readonly updatedAt: string;
+}
+
 export interface GameRecord {
   readonly id: GameId;
   readonly ownerId: UserId;
@@ -104,6 +113,26 @@ export interface SessionRepository {
   revokeByHash(tokenHash: string): Promise<void>;
 }
 
+export interface AiKeyRepository {
+  find(userId: UserId): Promise<UserAiKeyRecord | null>;
+  /** Inserts or replaces the player's key. */
+  upsert(userId: UserId,encryptedKey: string,keyHint: string): Promise<UserAiKeyRecord>;
+  /** Returns true when a key existed. */
+  remove(userId: UserId): Promise<boolean>;
+}
+
+export interface AiUsageRepository {
+  /** Requests served with the shared project key today (UTC) for this player. */
+  countToday(userId: UserId): Promise<number>;
+  /**
+   * Atomically reserves one request when the player is still under `dailyLimit`.
+   * Returns false (and records nothing) once the limit is reached.
+   */
+  tryConsume(userId: UserId,dailyLimit: number): Promise<boolean>;
+  /** Gives back a reserved request (provider failed before producing content). */
+  release(userId: UserId): Promise<void>;
+}
+
 export interface GameRepository {
   findById(id: GameId): Promise<GameRecord | null>;
   listByOwner(ownerId: UserId,page: PageRequest): Promise<Page<GameRecord>>;
@@ -137,6 +166,8 @@ export interface AuditRepository {
 export interface Repositories {
   readonly users: UserRepository;
   readonly sessions: SessionRepository;
+  readonly aiKeys: AiKeyRepository;
+  readonly aiUsage: AiUsageRepository;
   readonly games: GameRepository;
   readonly saves: SaveRepository;
   readonly events: EventRepository;

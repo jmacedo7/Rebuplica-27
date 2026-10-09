@@ -58,6 +58,8 @@ const main = async (): Promise<void> => {
       apiKey:config.ai.apiKey,
       model:config.ai.model,
       timeoutMs:config.ai.timeoutMs,
+      dailyLimit:config.ai.dailyLimit,
+      encryptionSecret:config.ai.encryptionSecret,
     },
     auth:{
       jwtSecret:config.auth.jwtSecret.reveal(),

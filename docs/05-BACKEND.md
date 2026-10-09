@@ -101,7 +101,7 @@ Os testes de integração criam bancos temporários descartáveis via `TEST_DATA
 
 `src/ai/gemini.ts` concentra toda a comunicação com o Google Gemini:
 
-- `GEMINI_API_KEY` (obrigatória para uso real, ausente ⇒ `AI_NOT_CONFIGURED`),
+- `GEMINI_API_KEY` (chave do projeto; ausente ⇒ só chaves pessoais), `GEMINI_DAILY_LIMIT` (cota diária por jogador, padrão 20) e `AI_KEY_ENCRYPTION_SECRET` (criptografa as chaves pessoais),
   `GEMINI_MODEL` (padrão `gemini-2.5-flash`) e `GEMINI_TIMEOUT_MS` (padrão 20000).
 - Cadastro da chave: variável de ambiente do processo do backend (host do Node). Nunca
   no frontend, nunca no repositório. A validação ponta a ponta usa `POST /ai/ping`

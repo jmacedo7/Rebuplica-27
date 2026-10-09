@@ -64,7 +64,9 @@ Todas as variáveis são validadas na inicialização (`src/config/env.ts`) e es
 | `NODE_ENV` | não | `development` | `development`, `test` ou `production`. |
 | `HOST` / `PORT` | não | `127.0.0.1` / `3000` | Endereço de escuta. Em containers use `0.0.0.0`. |
 | `LOG_LEVEL` | não | `info` | `debug`, `info`, `warn`, `error` ou `silent`. |
-| `GEMINI_API_KEY` | não | — | Chave da API do Google Gemini. Ausente = integração pendente (`/ai/ping` responde `AI_NOT_CONFIGURED`). Nunca no frontend, nunca no repositório. |
+| `GEMINI_API_KEY` | não | — | Chave **do projeto** (padrão, com limite diário por jogador). Ausente = só chaves pessoais. Nunca no frontend, nunca no repositório. |
+| `GEMINI_DAILY_LIMIT` | não | `20` | Consultas por jogador por dia (UTC) atendidas com a chave do projeto (1–10000). Quem usa chave própria não é limitado. |
+| `AI_KEY_ENCRYPTION_SECRET` | não | — | Segredo mestre (mín. 32 caracteres) que criptografa as chaves pessoais no banco (AES-256-GCM). Ausente = chaves pessoais desativadas. |
 | `GEMINI_MODEL` | não | `gemini-2.5-flash` | Identificador do modelo usado nas chamadas `generateContent`. |
 | `GEMINI_TIMEOUT_MS` | não | `20000` | Tempo limite por chamada ao provedor (1000–60000 ms). |
 

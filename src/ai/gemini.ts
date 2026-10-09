@@ -22,6 +22,7 @@ export const MAXIMUM_PROMPT_LENGTH = 1_000;
 export type GeminiErrorCode =
   | 'AI_NOT_CONFIGURED'
   | 'AI_AUTH_FAILED'
+  | 'AI_DAILY_LIMIT_REACHED'
   | 'AI_TIMEOUT'
   | 'AI_PROVIDER_RATE_LIMITED'
   | 'AI_PROVIDER_ERROR'
@@ -101,14 +102,22 @@ export class GeminiService {
     return this.#options.model;
   }
 
-  /** Generates one text completion for a validated, size limited prompt. */
-  async generate(rawPrompt: string): Promise<GeminiResult> {
-    const apiKey = this.#options.apiKey;
+  /** True when the shared project key is configured. */
+  get hasDefaultKey(): boolean {
+    return this.#options.apiKey !== undefined;
+  }
+
+  /**
+   * Generates one text completion for a validated, size limited prompt.
+   * `keyOverride` carries a player's own key for this single call; it is never stored here.
+   */
+  async generate(rawPrompt: string,keyOverride?: Secret<string>): Promise<GeminiResult> {
+    const apiKey = keyOverride ?? this.#options.apiKey;
     if (apiKey === undefined) {
       throw new GeminiError(
         503,
         'AI_NOT_CONFIGURED',
-        'A integração com o Gemini ainda não foi configurada: cadastre GEMINI_API_KEY no ambiente do backend',
+        'A integração com o Gemini ainda não foi configurada: cadastre sua chave pessoal ou peça ao administrador para definir GEMINI_API_KEY',
       );
     }
     const prompt = validateGeminiPrompt(rawPrompt);
@@ -130,7 +139,7 @@ export class GeminiService {
         },
       });
       if (response.status === 401 || response.status === 403) {
-        throw new GeminiError(503,'AI_AUTH_FAILED','O provedor de IA rejeitou a credencial; verifique a GEMINI_API_KEY');
+        throw new GeminiError(503,'AI_AUTH_FAILED','O provedor de IA rejeitou a chave; verifique se ela está correta e ativa');
       }
       if (response.status === 429) {
         throw new GeminiError(429,'AI_PROVIDER_RATE_LIMITED','O provedor de IA está limitando as requisições; tente novamente em instantes');
