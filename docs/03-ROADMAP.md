@@ -2,7 +2,7 @@
 
 ## Fase 0 — Fundação do repositório
 - [x] Licença proprietária
-- [x] Repositório privado
+- [ ] Confirmar visibilidade segura do repositório; atualmente o GitHub indica que está público
 - [x] README inicial
 - [x] .gitignore
 - [x] Documentação inicial
@@ -11,7 +11,7 @@
 - [x] Stack definitiva (Node 22 + TypeScript nativo + PostgreSQL)
 - [x] Estrutura de diretórios
 - [x] Tipagem estrita (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
-- [x] Testes (249 com PostgreSQL; 218 sem banco)
+- [x] Testes backend (274 passaram no CI com PostgreSQL em 09/10/2026)
 - [x] CI com serviço PostgreSQL, migrations e smoke test do build
 - [x] Validação de ambiente (`npm run config:check`, falha rápida)
 - [x] Lockfile (`package-lock.json`) e `npm ci`
@@ -67,12 +67,14 @@ Hoje existem dois tipos de decisão (`SET_ECONOMIC_INDICATOR`, `SET_FLAG`) apena
 - [ ] Controle de custos e limites
 - [ ] Segurança de chaves
 
-## Fase 7 — Frontend
-- [ ] Interface base
-- [ ] Dashboard
-- [ ] Campanha
-- [ ] Governo
-- [ ] Estado do país
-- [ ] Decisões
-- [ ] Histórico
-- [ ] Responsividade
+## Fase 7 — Frontend (protótipo inicial implementado)
+- [x] Interface base em português, tema escuro, componentes e animações
+- [x] Login/cadastro por e-mail e callback de sessão Google (validar no preview após deploy)
+- [x] Dashboard para criar partidas por semente e consultar histórico
+- [x] Console de partida com indicadores genéricos, decisões de teste, avanço de turno, saves, timeline e selo de replay
+- [ ] Fluxo de campanha completo
+- [ ] Selecionar candidato/partido existente ou criar candidato/partido novo
+- [ ] Telas de governo, Congresso, votações e mapa dos 27 estados
+- [ ] Gráficos históricos ligados a indicadores/eventos (a dependência Recharts existe, mas os gráficos ainda não)
+- [ ] Testes reproduzíveis do frontend e build frontend incluídos no CI
+- [ ] Validar responsividade/acessibilidade de todas as telas, não só do protótipo

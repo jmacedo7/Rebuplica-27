@@ -38,3 +38,21 @@ A suíte anterior (83 testes) permaneceu verde; os dois arquivos que dependiam d
 - Execução do CI no GitHub Actions (o workflow foi escrito e roda em `ubuntu-latest` com serviço `postgres:18-alpine`; a validação local usou um PostgreSQL equivalente).
 - Lint/formatador: não existe configuração no repositório (item aberto no roadmap).
 - Deploy real em provedor externo: o processo foi validado localmente no formato de produção (`npm run migrate && npm start`, probes, shutdown), mas nenhum provedor específico foi configurado.
+
+## Atualização de estado — 09/10/2026
+
+O CI do commit `eeb5a34` passou com **274 testes, 0 falhas**, além de typecheck, build do backend e smoke test de `/health` e `/ready`.
+
+A Fase A acrescentou um protótipo de frontend React e o fluxo de sessão Google ao código do repositório. O relatório `test_reports/iteration_1.json` registra uma execução anterior com 15 testes de backend e 16 passos de UI aprovados, mas o teste Playwright de frontend não está versionado como suíte reproduzível nem é executado pelo CI atual. O pipeline também não executa `npm run build` dentro de `frontend/`.
+
+A autenticação do preview precisa de uma validação manual após atualizar o deploy. Os testes do backend comprovam o contrato HTTP, mas não comprovam que o preview ativo está rodando o mesmo commit ou com as variáveis de ambiente corretas.
+
+### Lacunas confirmadas
+
+- O motor de domínio só implementa `SET_ECONOMIC_INDICATOR` e `SET_FLAG`; não há entidades/persistência para campanha, candidatos, partidos, eleição, Congresso, propostas, estados ou crises.
+- Não há integração de IA/provedores (Gemini/OpenRouter/OpenAI/Grok) nem gerenciamento de chaves.
+- A interface atual é o protótipo de login, dashboard e partida; não é a simulação política completa.
+- A contagem antiga de 249 testes acima é o histórico da etapa de setembro. Para o estado atual, use o resultado de 274 testes do CI em 09/10/2026.
+
+**Segurança:** o arquivo antigo `memory/test_credentials.md` e os ZIPs públicos gerados durante o desenvolvimento foram removidos do estado atual do repositório. A exclusão não apaga cópias em commits anteriores. Como o GitHub reporta o repositório como público, credenciais/sessões que tenham sido válidas devem ser revogadas e a visibilidade do repositório deve ser revista; não se deve considerar o histórico antigo sanitizado.
+

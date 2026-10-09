@@ -30,7 +30,7 @@ Restrições do usuário: não recriar o projeto do zero, preservar arquitetura/
 - Criado `tests/api/contract.test.ts`: todas as rotas do `docs/07-API.md`, nos prefixos `/` e `/api`, envelopes, paginação e erros 400/401/404/405/409/415.
 - Criado `tests/api/end-to-end.test.ts`: loop completo em **Postgres real**, reinício a frio e isolamento entre jogadores.
 - Criado `tests/api/oauth.test.ts`: fluxo de login social com fetcher injetado.
-- Adicionado script `npm run test:all`. **Resultado: 273 testes, 0 falhas; `npm run typecheck` limpo.**
+- Adicionado script `npm run test:all`. **Resultado reportado na fase Emergent: 273 testes, 0 falhas; a execução atual do CI registrou 274 testes passando.**
 - Corrigido o supervisor do Postgres (havia instância duplicada iniciada fora do supervisor).
 
 ### Fase 2 — Autenticação social (concluída)
@@ -74,4 +74,4 @@ O motor só conhece `SET_ECONOMIC_INDICATOR` e `SET_FLAG`. Para as 22 telas do e
 ## Notas operacionais
 - `npm run test:all` precisa de `TEST_DATABASE_URL` (ou `DATABASE_URL`) no `.env` para os testes de integração.
 - O golden master congela o comportamento do domínio: qualquer mudança de regra exige atualizar `tests/domain/golden-master.test.ts` de forma consciente.
-- Credenciais de teste: `/app/memory/test_credentials.md`.
+- Contas de teste E2E devem ser temporárias e geradas por execução. Não armazenar senhas, tokens de sessão ou URLs de banco com credenciais em arquivos versionados.

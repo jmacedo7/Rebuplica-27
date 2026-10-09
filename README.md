@@ -8,22 +8,23 @@ O jogador começa como candidato à Presidência da República, desenvolve sua c
 
 ## Status
 
-🚧 **Em desenvolvimento — backend funcional, frontend ainda não iniciado.**
+🚧 **Em desenvolvimento — protótipo jogável conectado ao backend; simulação política completa ainda pendente.**
 
-O escopo entregue hoje é a fundação de backend: autenticação, persistência PostgreSQL real, partidas versionadas, decisões, turnos, eventos, snapshots, restauração, replay determinístico, auditoria, testes e CI. A simulação avançada, a IA governamental e o frontend virão depois, sobre esta base.
+O repositório já contém um frontend React em português com cadastro/login, autenticação Google, dashboard de partidas, console de partida, decisões genéricas, avanço de turno, saves, histórico de eventos e verificação de replay. Isso é uma fundação funcional, não o jogo político completo.
 
 | Área | Estado |
 | --- | --- |
-| Domínio determinístico (RNG por seed, decisões, turnos, snapshots, replay) | ✅ |
-| Persistência PostgreSQL real (pool, transações, optimistic locking) | ✅ |
-| Migrations versionadas com checksum | ✅ |
-| API HTTP (auth, games, decisões, turnos, eventos, saves, restore, replay) | ✅ |
-| Segurança (scrypt, JWT HS256, ownership/IDOR, validação, rate limit, CORS, headers) | ✅ |
-| Testes (unit, domínio, API, segurança, integração PostgreSQL, concorrência, restart) | ✅ 249 testes |
-| CI com PostgreSQL | ✅ |
-| Observabilidade (logs JSON, request id, /health, /ready) | ✅ |
-| Frontend | ⛔ fora do escopo desta etapa |
-| Motor de simulação completo, IA, campanha, eleições | ⛔ próximas fases |
+| Domínio determinístico (RNG por seed, decisões, turnos, snapshots, replay) | ✅ fundação |
+| Persistência PostgreSQL real, transações e concorrência otimista | ✅ |
+| API HTTP para auth, partidas, decisões genéricas, turnos, eventos e saves | ✅ |
+| Autenticação por e-mail/senha e fluxo de sessão Google | ✅ implementados no código; preview ainda requer teste manual após deploy |
+| Frontend React em português (login, dashboard, partida, saves, timeline) | ✅ protótipo inicial |
+| CI backend (TypeScript, testes, build e smoke test com PostgreSQL) | ✅ 274 testes passaram no CI em 09/10/2026 |
+| Build/testes automatizados do frontend no CI | ⛔ pendente |
+| Campanha, seleção/criação de candidatos e partidos, eleições e apuração | ⛔ não implementados |
+| Governo, Congresso, votação de projetos, 27 UFs, crises e relações internacionais | ⛔ não implementados |
+| Gráficos de indicadores históricos a partir dos eventos | ⛔ pendente |
+| Integração com Gemini/Outros provedores de IA e gerenciamento seguro de chaves | ⛔ não implementada |
 
 ## Requisitos
 
