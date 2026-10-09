@@ -1,8 +1,8 @@
-# Rebuplica 27 — Projeto
+# República 27 — Projeto
 
 ## Conceito
 
-Rebuplica 27 é um jogo de simulação política e governamental ambientado no Brasil contemporâneo.
+República 27 é um jogo de simulação política e governamental ambientado no Brasil contemporâneo.
 
 O jogador começa como candidato à Presidência da República. Durante a campanha, apresenta propostas e toma decisões que podem afetar sua trajetória eleitoral. O jogador pode ser eleito ou não.
 
