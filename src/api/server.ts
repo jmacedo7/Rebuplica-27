@@ -351,6 +351,25 @@ const rateScopeFor = (method: string,pathname: string): RateLimitScope | null =>
 const isStateChanging = (method: string | undefined): boolean =>
   method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
 
+const firstHeaderValue = (value: string | string[] | undefined): string | undefined =>
+  Array.isArray(value) ? value[0] : value;
+
+/** Resolve the externally visible origin when the request reaches us through a TLS proxy. */
+const resolveRequestOrigin = (request: IncomingMessage): string | undefined => {
+  const host = request.headers.host;
+  if (host === undefined || host.trim() === '') return undefined;
+  const forwardedProto = firstHeaderValue(request.headers['x-forwarded-proto'])
+    ?.split(',')[0]?.trim().toLowerCase();
+  const protocol = forwardedProto ?? 'http';
+  if (protocol !== 'http' && protocol !== 'https') return undefined;
+  try {
+    return new URL(`${protocol}://${host}`).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+
 export const createApiServer = (options: ApiServerOptions): ApiServer => {
   const logger = options.logger ?? createLogger({level:options.logLevel,context:{service:SERVICE_NAME}});
   const auth = new AuthService(options.persistence,{
@@ -375,7 +394,11 @@ export const createApiServer = (options: ApiServerOptions): ApiServer => {
     const method = request.method ?? 'GET';
     const origin = request.headers.origin;
     let pathname = request.url?.split('?')[0] ?? '/';
-    const cors = resolveCors(typeof origin === 'string' ? origin : undefined,allowedOrigins);
+    const cors = resolveCors(
+      typeof origin === 'string' ? origin : undefined,
+      allowedOrigins,
+      resolveRequestOrigin(request),
+    );
     let routePattern = pathname;
     let principalId: string | null = null;
 

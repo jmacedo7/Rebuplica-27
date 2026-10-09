@@ -58,7 +58,7 @@ Todas as variáveis são validadas na inicialização (`src/config/env.ts`) e es
 | `JWT_SECRET` | em produção | aleatório em dev/test | Mínimo de 32 caracteres; placeholders e valores de baixa entropia são rejeitados em produção. |
 | `JWT_ISSUER` / `JWT_AUDIENCE` | não | `rebuplica-27` / `rebuplica-api` | Claims verificadas em todo token. |
 | `ACCESS_TOKEN_TTL_SECONDS` | não | `900` | Validade do access token (60–86400). |
-| `CORS_ALLOWED_ORIGINS` | não | vazio (sem CORS) | Lista de origens separada por vírgula. Curingas são rejeitados. |
+| `CORS_ALLOWED_ORIGINS` | não | vazio (somente mesma origem) | Origens exatas separadas por vírgula para frontend/API em origens diferentes. Curingas são rejeitados. |
 | `NODE_ENV` | não | `development` | `development`, `test` ou `production`. |
 | `HOST` / `PORT` | não | `127.0.0.1` / `3000` | Endereço de escuta. Em containers use `0.0.0.0`. |
 | `LOG_LEVEL` | não | `info` | `debug`, `info`, `warn`, `error` ou `silent`. |
@@ -124,7 +124,7 @@ Regras invariantes:
 2. Rode as migrations antes de subir a nova versão: `npm run migrate` (release phase, job de deploy ou `npm run migrate && npm start`).
 3. Suba o processo com `npm start` (usa `dist/`).
 4. Aponte os probes para `/ready` (depende do banco) e/ou `/health` (apenas processo).
-5. Defina `HOST=0.0.0.0` e `CORS_ALLOWED_ORIGINS` com o domínio do frontend.
+5. Defina `HOST=0.0.0.0`. Se frontend e API estiverem em origens diferentes, configure `CORS_ALLOWED_ORIGINS` com a origem exata do frontend (incluindo `https://`, sem barra final).
 6. O processo trata `SIGTERM`/`SIGINT`: para de aceitar conexões, drena requisições (10s) e fecha o pool.
 
 Limitação conhecida: o rate limiting é em memória, portanto por instância. Com mais de uma réplica, o limite efetivo é multiplicado pelo número de instâncias (ver `docs/05-BACKEND.md`).
