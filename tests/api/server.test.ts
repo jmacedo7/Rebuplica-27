@@ -447,12 +447,25 @@ describe('routing and protocol level behaviour',()=>{
       const allowed=await request(server,'/games',{method:'OPTIONS',origin:'https://app.example',headers:{'access-control-request-method':'POST'}});
       assert.equal(allowed.status,204);
       assert.equal(allowed.headers.get('access-control-allow-origin'),'https://app.example');
+      assert.equal(allowed.headers.get('access-control-allow-credentials'),'true');
       assert.match(allowed.headers.get('access-control-allow-headers') ?? '',/authorization/u);
+      assert.match(allowed.headers.get('access-control-allow-headers') ?? '',/x-session-id/u);
       assert.equal(allowed.headers.get('vary'),'Origin');
       const denied=await request(server,'/games',{method:'OPTIONS',origin:'https://evil.example'});
       assert.equal(denied.status,403);
       assert.equal(denied.headers.get('access-control-allow-origin'),null);
     },{corsAllowedOrigins:['https://app.example']});
+  });
+  it('allows same-origin browser registration without a CORS allowlist',async()=>{
+    await withServer(async server=>{
+      const response=await request(server,'/api/auth/register',{
+        origin:server.url,
+        body:{email:'same-origin@example.com',password:'a-very-strong-password'},
+      });
+      assert.equal(response.status,201);
+      assert.equal(response.headers.get('access-control-allow-origin'),server.url);
+      assert.equal(response.headers.get('access-control-allow-credentials'),'true');
+    },{corsAllowedOrigins:[]});
   });
   it('rate limits the auth scope with a retry-after header',async()=>{
     const limits={auth:{limit:3,windowMs:60_000},write:{limit:2,windowMs:60_000},read:{limit:100,windowMs:60_000}};
