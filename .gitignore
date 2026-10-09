@@ -59,3 +59,4 @@ desktop.ini
 *.env
 credentials.json
 .credentials
+**/test_credentials.md
