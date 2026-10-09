@@ -46,7 +46,7 @@ describe('POST /auth/session (Emergent Google login)',()=>{
       const setCookie = exchanged.headers.get('set-cookie');
       assert.ok(setCookie?.includes('HttpOnly'),'cookie must be httpOnly');
       assert.ok(setCookie?.includes('Secure'),'cookie must be Secure');
-      assert.ok(setCookie?.includes('SameSite=Lax'));
+      assert.ok(setCookie?.includes('SameSite=None'));
       assert.ok(!setCookie?.includes('session-token-abc123') === false,'cookie carries the session token');
 
       const token = cookieValue(setCookie);
