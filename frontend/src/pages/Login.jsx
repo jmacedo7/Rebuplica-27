@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button, Field } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
@@ -13,10 +13,11 @@ const startGoogleLogin = () => {
 export default function Login() {
   const { loginWithPassword, registerWithPassword } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(() => location.state?.authError || null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (event) => {
@@ -34,8 +35,15 @@ export default function Login() {
         WEAK_PASSWORD: 'A senha precisa de no mínimo 12 caracteres.',
         INVALID_EMAIL: 'E-mail inválido.',
         RATE_LIMITED: 'Muitas tentativas. Aguarde um minuto.',
+        FORBIDDEN: 'O servidor bloqueou a origem deste preview. Verifique a configuração de CORS.',
+        SERVICE_UNAVAILABLE: 'O servidor ou o banco de dados está temporariamente indisponível.',
+        VALIDATION_ERROR: failure.message || 'Confira os dados e tente novamente.',
       };
-      setError(messages[failure.code] || 'Não foi possível concluir. Tente novamente.');
+      setError(
+        failure instanceof TypeError
+          ? 'Não foi possível conectar à API. Verifique o endereço do backend e tente novamente.'
+          : messages[failure.code] || 'Não foi possível concluir. Tente novamente.',
+      );
     } finally {
       setBusy(false);
     }
