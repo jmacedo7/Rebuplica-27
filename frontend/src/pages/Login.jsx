@@ -77,7 +77,7 @@ export default function Login() {
             Simulador político · Brasil 2027
           </p>
           <h1 className="mt-6 font-display text-4xl leading-[1.05] tracking-tight text-bone sm:text-5xl lg:text-6xl">
-            Rebuplica 27
+            República 27
           </h1>
           <p className="mt-6 max-w-lg text-base leading-relaxed text-muted">
             Um motor de simulação determinístico: cada decisão vira um evento imutável, cada
