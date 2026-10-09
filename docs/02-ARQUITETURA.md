@@ -1,4 +1,4 @@
-# Rebuplica 27 — Arquitetura
+# República 27 — Arquitetura
 
 ## Princípios
 
