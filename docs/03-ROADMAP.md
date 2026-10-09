@@ -1,4 +1,4 @@
-# Rebuplica 27 — Roadmap
+# República 27 — Roadmap
 
 ## Fase 0 — Fundação do repositório
 - [x] Licença proprietária
