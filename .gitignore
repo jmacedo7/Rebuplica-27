@@ -56,3 +56,6 @@ desktop.ini
 *.key
 *.p12
 *.pfx
+*.env
+credentials.json
+.credentials
