@@ -39,9 +39,10 @@ export interface CorsDecision {
 }
 
 /**
- * Cross origin policy: only explicitly configured origins are echoed back, the
- * response always varies on `Origin`, and credentials are not used (the API is
- * token based), so no cookie rules are involved.
+ * Browser policy:
+ * - same-origin requests are accepted without requiring a deployment-specific allowlist;
+ * - cross-origin requests must match an explicitly configured origin;
+ * - credentialed requests are enabled only for those accepted origins (never wildcard).
  */
 export const resolveCors = (origin: string | undefined,allowedOrigins: readonly string[]): CorsDecision => {
   if (origin === undefined || origin === '') return {allowed:false,headers:{}};
@@ -51,8 +52,9 @@ export const resolveCors = (origin: string | undefined,allowedOrigins: readonly 
     headers:{
       vary:'Origin',
       'access-control-allow-origin':origin,
+      'access-control-allow-credentials':'true',
       'access-control-allow-methods':'GET, POST, OPTIONS',
-      'access-control-allow-headers':'authorization, content-type, x-request-id',
+      'access-control-allow-headers':'authorization, content-type, x-request-id, x-session-id',
       'access-control-max-age':'600',
     },
   };
@@ -171,6 +173,6 @@ export const sessionCookie = (name: string,value: string,maxAgeSeconds: number):
     'Path=/',
     'HttpOnly',
     'Secure',
-    'SameSite=Lax',
+    'SameSite=None',
     `Max-Age=${maxAgeSeconds}`,
   ].join('; ');
