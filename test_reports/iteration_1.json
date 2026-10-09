@@ -1,11 +1,19 @@
 {
   "summary": "Complete end-to-end validation of Rebuplica 27 (backend + frontend) via the public preview URL. 15/15 pytest cases pass (health, register, login, /auth/me, invalid seed, match CRUD, decision + flag + invalid-key, advance turn, events + replay consistency, save/duplicate conflict/restore, user isolation, Emergent OAuth session cookie + logout). 16/16 Playwright UI steps pass (register with short-password error, invalid-seed error, random seed, create match, Turn 0 / 2027 header, replay íntegro badge, apply inflation=4.2, invalid key '1abc' blocked client-side, SET_FLAG badge, advance 90 days, create save, duplicate save conflict, advance+restore back to Turno 1, timeline populated, logout, /dashboard protected after logout).",
-  "backend_issues": { "critical": [], "minor": [] },
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
   "frontend_issues": {
     "ui_bugs": [],
     "integration_issues": [],
     "design_issues": [
-      {"screen": "Login page", "issues": ["React Router v6 future-flag warnings in console (v7_startTransition, v7_relativeSplatPath) — cosmetic only"]}
+      {
+        "screen": "Login page",
+        "issues": [
+          "React Router v6 future-flag warnings in console (v7_startTransition, v7_relativeSplatPath) — cosmetic only"
+        ]
+      }
     ]
   },
   "test_report_links": [
@@ -16,14 +24,20 @@
   "critical_code_review_comments": [
     "Dashboard.create() swallows backend error details with a generic 'Não foi possível criar a partida.'; could surface failure.code (e.g. VALIDATION_ERROR vs RATE_LIMITED) for better UX, as done in Login.jsx.",
     "DecisionForm only client-validates key format; good UX, but ensure 500/network failures also propagate a readable message (currently caught by generic fallback — fine).",
-    "React Router v6 future-flag warnings — add v7_startTransition / v7_relativeSplatPath opt-in to silence."
+    "React Router v6 future-flag warnings — add v7_startTransition / v7_relativeSplatPath opt-in to silence.",
+    "This report is historical: rerun E2E/UI tests after the auth and CORS changes; frontend Playwright source is not currently committed in this repository."
   ],
-  "updated_files": ["/app/backend/tests/test_backend_e2e.py"],
-  "success_rate": {"backend": "100% (15/15)", "frontend": "100% (16/16)"},
-  "test_credentials": "qa.rebuplica@example.com / uma-senha-bem-longa-123 (JWT); OAuth session created on-the-fly via psql snippet from /app/memory/test_credentials.md",
+  "updated_files": [
+    "/app/backend/tests/test_backend_e2e.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15)",
+    "frontend": "100% (16/16)"
+  },
+  "test_credentials": "Redacted; E2E accounts must be generated per run. Do not commit usernames/passwords, tokens, or database credentials.",
   "seed_data_creation": "Tests create ephemeral users with random-suffix emails (ui.qa+<hex>, qa.rebuplica.second+<hex>, oauth.qa+<hex>) and new games per run; nothing destructive.",
-  "retest_needed": false,
+  "retest_needed": true,
   "main_agent_can_self_test": true,
-  "context_for_next_testing_agent": "Backend regression suite lives at /app/backend/tests/test_backend_e2e.py and must be executed with REACT_APP_BACKEND_URL set (pytest does not auto-load frontend/.env). Postgres OAuth-session insert needs 'su postgres -c psql -d rebuplica'. Rate limits: auth 10/min — if you re-run many register/login attempts in parallel, back off 60s.",
+  "context_for_next_testing_agent": "Backend E2E tests live at /app/backend/tests/test_backend_e2e.py and require REACT_APP_BACKEND_URL. Use per-run credentials, never version credentials or live session tokens. OAuth-session test inserts a temporary row only in a dedicated local test database.",
   "rca of the issue": "No bugs found."
 }
