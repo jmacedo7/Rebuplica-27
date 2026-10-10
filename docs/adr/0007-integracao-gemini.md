@@ -11,7 +11,7 @@ meio de uma camada isolada (`src/ai/gemini.ts`).
 
 - A chave vive na variável de ambiente `GEMINI_API_KEY`, lida como `Secret` (nunca
   serializada em logs, erros ou saídas) e cadastre-se apenas no ambiente do backend.
-- O modelo é configurável (`GEMINI_MODEL`, padrão `gemini-2.5-flash`) e o tempo
+- O modelo é configurável (`GEMINI_MODEL`, padrão `gemini-flash-latest`) e o tempo
   limite por chamada é `GEMINI_TIMEOUT_MS` (padrão 20 s).
 - Ausência de chave é um estado explícito: o endpoint autenticado `POST /ai/ping`
   responde `503 AI_NOT_CONFIGURED`; nunca há resposta simulada.
@@ -39,3 +39,15 @@ com o `fetcher` injetável para que os testes nunca realizem chamadas reais.
   (`source`) e a cota. O modelo de cobrança ainda será definido.
 - Rotação do `AI_KEY_ENCRYPTION_SECRET` invalida as chaves salvas: os jogadores
   precisam cadastrá-las de novo (decifrar com outro segredo falha de forma segura).
+
+## Adendo (10/10/2026): modelos ativos do Gemini
+- O Google descontinuou `gemini-2.5-flash` (e `gemini-2.0-flash`) para chaves novas:
+  `generateContent` responde HTTP 404 ("no longer available to new users").
+- Novo padrão: `GEMINI_MODEL=gemini-flash-latest`. Em picos de demanda o Google
+  responde 503 ("high demand"); validado em produção que `gemini-flash-lite-latest`
+  segue atendendo.
+- `GeminiService` agora tenta o modelo configurado e, diante de 404/429/503, cai
+  automaticamente para `gemini-flash-lite-latest` (uma vez) antes de falhar. A chave
+  nunca aparece no URL, no corpo ou nos erros.
+- Conectividade real comprovada no Base44 em 10/10/2026: chamada de diagnóstico
+  respondeu `GEMINI_OK` com `gemini-flash-lite-latest`.

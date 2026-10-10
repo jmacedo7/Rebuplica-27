@@ -21,7 +21,7 @@ describe('loadConfig - Gemini settings',()=>{
   it('leaves the integration pending when GEMINI_API_KEY is absent',()=>{
     const config = loadConfig({DATABASE_URL: VALID_DB});
     assert.equal(config.ai.apiKey,undefined);
-    assert.equal(config.ai.model,'gemini-2.5-flash');
+    assert.equal(config.ai.model,'gemini-flash-latest');
     assert.equal(config.ai.timeoutMs,20_000);
   });
 

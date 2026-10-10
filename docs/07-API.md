@@ -98,7 +98,7 @@ Autenticado. Verifica a integração com um pedido curto:
 ```json
 { "prompt": "Escreva uma frase de campanha sobre educação." }
 ```
-`200 {"reply":"…","model":"gemini-2.5-flash","source":"personal"|"default"}` · `400 VALIDATION_ERROR` (3–1000 caracteres, propriedades desconhecidas rejeitadas) · `401` · `429 RATE_LIMITED` (escopo `ai`: 10/min) · `429 AI_DAILY_LIMIT_REACHED` (limite diário da chave do projeto) · `503 AI_NOT_CONFIGURED` (sem chave pessoal nem do projeto) · `503 AI_AUTH_FAILED` · `429 AI_PROVIDER_RATE_LIMITED` · `503 AI_PROVIDER_ERROR` / `AI_PROVIDER_UNAVAILABLE` · `504 AI_TIMEOUT`.
+`200 {"reply":"…","model":"gemini-flash-latest","source":"personal"|"default"}` (o campo `model` informa o modelo que atendeu; quando o principal está sobrecarregado (503/429) ou foi desativado (404), o backend tenta automaticamente `gemini-flash-lite-latest` uma vez) · `400 VALIDATION_ERROR` (3–1000 caracteres, propriedades desconhecidas rejeitadas) · `401` · `429 RATE_LIMITED` (escopo `ai`: 10/min) · `429 AI_DAILY_LIMIT_REACHED` (limite diário da chave do projeto) · `503 AI_NOT_CONFIGURED` (sem chave pessoal nem do projeto) · `503 AI_AUTH_FAILED` · `429 AI_PROVIDER_RATE_LIMITED` · `503 AI_PROVIDER_ERROR` / `AI_PROVIDER_UNAVAILABLE` · `504 AI_TIMEOUT`.
 
 Falhas do provedor não consomem a cota diária. A chave nunca aparece em respostas ou logs; o motor determinístico continua sendo a única fonte de verdade do estado.
 

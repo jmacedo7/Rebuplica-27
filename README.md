@@ -67,7 +67,7 @@ Todas as variáveis são validadas na inicialização (`src/config/env.ts`) e es
 | `GEMINI_API_KEY` | não | — | Chave **do projeto** (padrão, com limite diário por jogador). Ausente = só chaves pessoais. Nunca no frontend, nunca no repositório. |
 | `GEMINI_DAILY_LIMIT` | não | `20` | Consultas por jogador por dia (UTC) atendidas com a chave do projeto (1–10000). Quem usa chave própria não é limitado. |
 | `AI_KEY_ENCRYPTION_SECRET` | não | — | Segredo mestre (mín. 32 caracteres) que criptografa as chaves pessoais no banco (AES-256-GCM). Ausente = chaves pessoais desativadas. |
-| `GEMINI_MODEL` | não | `gemini-2.5-flash` | Identificador do modelo usado nas chamadas `generateContent`. |
+| `GEMINI_MODEL` | não | `gemini-flash-latest` | Identificador do modelo usado nas chamadas `generateContent`. `gemini-2.5-flash` foi descontinuado pelo Google para novas chaves; sob sobrecarga (503/429) ou desativação (404) o backend cai automaticamente para `gemini-flash-lite-latest`. |
 | `GEMINI_TIMEOUT_MS` | não | `20000` | Tempo limite por chamada ao provedor (1000–60000 ms). |
 
 ## Banco de dados e migrations

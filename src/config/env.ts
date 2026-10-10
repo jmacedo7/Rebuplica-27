@@ -233,10 +233,10 @@ function readOptionalSecret(env: EnvSource,name: EnvVarName,issues: ConfigIssue[
 
 function readGeminiModel(env: EnvSource,name: EnvVarName,issues: ConfigIssue[]): string {
   const raw = read(env,name);
-  if (raw === undefined) return 'gemini-2.5-flash';
+  if (raw === undefined) return 'gemini-flash-latest';
   if (!GEMINI_MODEL_PATTERN.test(raw)) {
-    issues.push({variable:name,message:`must be a Gemini model identifier such as gemini-2.5-flash (received "${raw}")`});
-    return 'gemini-2.5-flash';
+    issues.push({variable:name,message:`must be a Gemini model identifier such as gemini-flash-latest (received "${raw}")`});
+    return 'gemini-flash-latest';
   }
   return raw;
 }

@@ -14,7 +14,10 @@
  */
 import type { Secret } from '../config/index.ts';
 
-export const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com';
+export /** Lighter model tried once when the primary one is overloaded (503/429) or retired (404). */
+const FALLBACK_GEMINI_MODEL = 'gemini-flash-lite-latest';
+const RETRYABLE_GEMINI_CODES: readonly GeminiErrorCode[] = ['AI_PROVIDER_RATE_LIMITED','AI_PROVIDER_UNAVAILABLE'];
+const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com';
 
 export const MINIMUM_PROMPT_LENGTH = 3;
 export const MAXIMUM_PROMPT_LENGTH = 1_000;
@@ -121,7 +124,30 @@ export class GeminiService {
       );
     }
     const prompt = validateGeminiPrompt(rawPrompt);
-    const url = `${this.#options.baseUrl ?? GEMINI_API_BASE_URL}/v1beta/models/${encodeURIComponent(this.#options.model)}:generateContent`;
+    const models: readonly string[] = this.#options.model === FALLBACK_GEMINI_MODEL
+      ? [this.#options.model]
+      : [this.#options.model,FALLBACK_GEMINI_MODEL];
+    let lastFailure: GeminiError | null = null;
+    for (const model of models) {
+      try {
+        return await this.#generateOnce(model,prompt,apiKey);
+      } catch (error) {
+        // The provider overloaded or deprecated the primary model: try the lighter
+        // one once before giving up (observed in production: gemini-2.5-flash was
+        // retired for new keys with HTTP 404 and gemini-flash-latest answers 503
+        // during demand spikes).
+        if (error instanceof GeminiError && RETRYABLE_GEMINI_CODES.includes(error.code) && model !== models[models.length - 1]) {
+          lastFailure = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw lastFailure ?? new GeminiError(503,'AI_PROVIDER_UNAVAILABLE','O provedor de IA está indisponível no momento');
+  }
+
+  async #generateOnce(model: string,prompt: string,apiKey: Secret<string>): Promise<GeminiResult> {
+    const url = `${this.#options.baseUrl ?? GEMINI_API_BASE_URL}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(),this.#options.timeoutMs);
     try {
@@ -141,6 +167,16 @@ export class GeminiService {
       if (response.status === 401 || response.status === 403) {
         throw new GeminiError(503,'AI_AUTH_FAILED','O provedor de IA rejeitou a chave; verifique se ela está correta e ativa');
       }
+      if (response.status === 400) {
+        // The provider answers 400 (not 401) for an invalid key: detect it so a key
+        // problem is reported as AI_AUTH_FAILED instead of triggering the model fallback.
+        const failure = await response.json().catch(() => null) as {error?: {message?: string; status?: string}} | null;
+        const message = `${failure?.error?.message ?? ''} ${failure?.error?.status ?? ''}`;
+        if (/api[_ ]?key/iu.test(message)) {
+          throw new GeminiError(503,'AI_AUTH_FAILED','O provedor de IA rejeitou a chave; verifique se ela está correta e ativa');
+        }
+        throw new GeminiError(503,'AI_PROVIDER_ERROR','O provedor de IA recusou o pedido');
+      }
       if (response.status === 429) {
         throw new GeminiError(429,'AI_PROVIDER_RATE_LIMITED','O provedor de IA está limitando as requisições; tente novamente em instantes');
       }
@@ -157,7 +193,7 @@ export class GeminiService {
       if (text === '') {
         throw new GeminiError(503,'AI_PROVIDER_ERROR','O provedor de IA devolveu uma resposta vazia');
       }
-      return {text,model: this.#options.model};
+      return {text,model};
     } catch (error) {
       if (error instanceof GeminiError) throw error;
       if (error instanceof Error && error.name === 'AbortError') {
@@ -167,5 +203,4 @@ export class GeminiService {
     } finally {
       clearTimeout(timer);
     }
-  }
-}
+  }}

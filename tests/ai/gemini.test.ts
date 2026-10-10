@@ -158,6 +158,98 @@ describe('GeminiService (unit)',()=>{
       return true;
     });
   });
+
+  it('falls back to gemini-flash-lite-latest when the primary model is overloaded',async()=>{
+    const urls: string[] = [];
+    let call = 0;
+    const fetcher: GeminiFetcher = async request => {
+      urls.push(request.url);
+      call += 1;
+      return call === 1 ? new Response('high demand',{status:503}) : textResponse(['Educação é o futuro.']);
+    };
+    const reply = await service({apiKey: API_KEY,fetcher}).generate(PROMPT);
+    assert.equal(reply.text,'Educação é o futuro.');
+    assert.equal(reply.model,'gemini-flash-lite-latest');
+    assert.equal(urls.length,2,'exactly one primary attempt and one fallback');
+    assert.ok(urls[0]?.endsWith('/v1beta/models/gemini-2.5-flash:generateContent'));
+    assert.ok(urls[1]?.endsWith('/v1beta/models/gemini-flash-lite-latest:generateContent'));
+  });
+
+  it('falls back when the primary model was retired by the provider (HTTP 404)',async()=>{
+    const urls: string[] = [];
+    let call = 0;
+    const fetcher: GeminiFetcher = async request => {
+      urls.push(request.url);
+      call += 1;
+      return call === 1
+        ? jsonResponse({error: {message: 'no longer available to new users'}},404)
+        : textResponse(['ok']);
+    };
+    const reply = await service({apiKey: API_KEY,fetcher}).generate(PROMPT);
+    assert.equal(reply.model,'gemini-flash-lite-latest');
+    assert.equal(urls.length,2);
+  });
+
+  it('fails after both models are unavailable',async()=>{
+    const urls: string[] = [];
+    const fetcher: GeminiFetcher = async request => {
+      urls.push(request.url);
+      return new Response('down',{status:503});
+    };
+    await assert.rejects(service({apiKey: API_KEY,fetcher}).generate(PROMPT),error => {
+      const failure = asGeminiError(error);
+      assert.equal(failure.code,'AI_PROVIDER_UNAVAILABLE');
+      assert.equal(urls.length,2);
+      return true;
+    });
+  });
+
+  it('reports AI_AUTH_FAILED and does not retry when the provider rejects the key (HTTP 400)',async()=>{
+    let calls = 0;
+    const fetcher: GeminiFetcher = async () => {
+      calls += 1;
+      return jsonResponse({error: {message: 'API key not valid. Please pass a valid API key.',status: 'INVALID_ARGUMENT'}},400);
+    };
+    await assert.rejects(service({apiKey: API_KEY,fetcher}).generate(PROMPT),(error: unknown) => {
+      const failure = asGeminiError(error);
+      assert.equal(failure.code,'AI_AUTH_FAILED');
+      assert.equal(calls,1,'a key problem must not trigger the model fallback');
+      return true;
+    });
+  });
+
+  it('maps a generic 400 to AI_PROVIDER_ERROR without retrying',async()=>{
+    let calls = 0;
+    const fetcher: GeminiFetcher = async () => {
+      calls += 1;
+      return jsonResponse({error: {message: 'Invalid request payload.'}},400);
+    };
+    await assert.rejects(service({apiKey: API_KEY,fetcher}).generate(PROMPT),(error: unknown) => {
+      const failure = asGeminiError(error);
+      assert.equal(failure.code,'AI_PROVIDER_ERROR');
+      assert.equal(calls,1);
+      return true;
+    });
+  });
+
+  it('does not retry when the configured model already is the fallback',async()=>{
+    let calls = 0;
+    const fetcher: GeminiFetcher = async () => {
+      calls += 1;
+      return new Response('down',{status:503});
+    };
+    const fallbackOnly = new GeminiService({
+      apiKey: new Secret(API_KEY),
+      model: 'gemini-flash-lite-latest',
+      timeoutMs: 2_000,
+      fetcher,
+    });
+    await assert.rejects(fallbackOnly.generate(PROMPT),(error: unknown) => {
+      assert.equal(asGeminiError(error).code,'AI_PROVIDER_UNAVAILABLE');
+      assert.equal(calls,1);
+      return true;
+    });
+  });
 });
 
 describe('POST /ai/ping (endpoint)',()=>{
